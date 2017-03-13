@@ -16,7 +16,7 @@
   -->
 <resources>
 
-    <string name="app_name">Universal Music Player</string>
+    <string name="app_name">Stream Me Up Scotty</string>
     <string name="favorite">Favorite</string>
     <string name="error_no_metadata">Unable to retrieve metadata.</string>
     <string name="browse_genres">Genres</string>
@@ -51,4 +51,6 @@
     <string name="no_search_results">No search results.</string>
     <string name="loading">Loading…</string>
     <string name="media_route_menu_title">Play on…</string>
+    <string name="browse_all">All</string>
+    <string name="browse_all_subtitle">All songs</string>
 </resources>

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.utils;
+package rocks.stalin.android.app.utils;
 
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -21,8 +21,8 @@ import android.support.test.runner.AndroidJUnit4;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 
-import com.example.android.uamp.TestSetupHelper;
-import com.example.android.uamp.model.MusicProvider;
+import rocks.stalin.android.app.TestSetupHelper;
+import rocks.stalin.android.app.model.MusicProvider;
 
 import org.junit.Before;
 import org.junit.Test;

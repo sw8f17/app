@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package com.example.android.uamp;
+package rocks.stalin.android.app;
 
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.util.LruCache;
 
-import com.example.android.uamp.utils.BitmapHelper;
-import com.example.android.uamp.utils.LogHelper;
+import rocks.stalin.android.app.utils.BitmapHelper;
+import rocks.stalin.android.app.utils.LogHelper;
 
 import java.io.IOException;
 

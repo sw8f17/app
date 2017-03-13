@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.ui.tv;
+package rocks.stalin.android.app.ui.tv;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -32,8 +32,8 @@ import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.text.TextUtils;
 
-import com.example.android.uamp.utils.LogHelper;
-import com.example.android.uamp.utils.MediaIDHelper;
+import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.MediaIDHelper;
 
 import java.util.List;
 

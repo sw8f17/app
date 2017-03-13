@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp;
+package rocks.stalin.android.app;
 
 import android.os.Build;
 import android.os.Bundle;

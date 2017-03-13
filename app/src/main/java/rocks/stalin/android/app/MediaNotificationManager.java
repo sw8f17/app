@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.uamp;
+package rocks.stalin.android.app;
 
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -35,9 +35,9 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.NotificationCompat;
 
-import com.example.android.uamp.ui.MusicPlayerActivity;
-import com.example.android.uamp.utils.LogHelper;
-import com.example.android.uamp.utils.ResourceHelper;
+import rocks.stalin.android.app.ui.MusicPlayerActivity;
+import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.ResourceHelper;
 
 /**
  * Keeps track of a notification and updates it automatically for a given
@@ -50,11 +50,11 @@ public class MediaNotificationManager extends BroadcastReceiver {
     private static final int NOTIFICATION_ID = 412;
     private static final int REQUEST_CODE = 100;
 
-    public static final String ACTION_PAUSE = "com.example.android.uamp.pause";
-    public static final String ACTION_PLAY = "com.example.android.uamp.play";
-    public static final String ACTION_PREV = "com.example.android.uamp.prev";
-    public static final String ACTION_NEXT = "com.example.android.uamp.next";
-    public static final String ACTION_STOP_CASTING = "com.example.android.uamp.stop_cast";
+    public static final String ACTION_PAUSE = "rocks.stalin.android.app.pause";
+    public static final String ACTION_PLAY = "rocks.stalin.android.app.play";
+    public static final String ACTION_PREV = "rocks.stalin.android.app.prev";
+    public static final String ACTION_NEXT = "rocks.stalin.android.app.next";
+    public static final String ACTION_STOP_CASTING = "rocks.stalin.android.app.stop_cast";
 
     private final MusicService mService;
     private MediaSessionCompat.Token mSessionToken;

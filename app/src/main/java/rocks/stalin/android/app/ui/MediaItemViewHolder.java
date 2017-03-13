@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.ui;
+package rocks.stalin.android.app.ui;
 
 import android.app.Activity;
 import android.content.Context;
@@ -33,8 +33,8 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.example.android.uamp.R;
-import com.example.android.uamp.utils.MediaIDHelper;
+import rocks.stalin.android.app.R;
+import rocks.stalin.android.app.utils.MediaIDHelper;
 
 public class MediaItemViewHolder {
 

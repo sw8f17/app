@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.playback;
+package rocks.stalin.android.app.playback;
 
-import com.example.android.uamp.MusicService;
+import rocks.stalin.android.app.MusicService;
 
 import static android.support.v4.media.session.MediaSessionCompat.QueueItem;
 

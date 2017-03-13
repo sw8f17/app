@@ -14,7 +14,7 @@
 * limitations under the License.
 */
 
-package com.example.android.uamp.playback;
+package rocks.stalin.android.app.playback;
 
 import android.content.res.Resources;
 import android.os.AsyncTask;
@@ -24,11 +24,10 @@ import android.support.annotation.NonNull;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 
-import com.example.android.uamp.R;
-import com.example.android.uamp.model.MusicProvider;
-import com.example.android.uamp.utils.LogHelper;
-import com.example.android.uamp.utils.MediaIDHelper;
-import com.example.android.uamp.utils.WearHelper;
+import rocks.stalin.android.app.R;
+import rocks.stalin.android.app.model.MusicProvider;
+import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.MediaIDHelper;
 
 /**
  * Manage the interactions among the container service, the queue manager and the actual playback.
@@ -37,7 +36,7 @@ public class PlaybackManager implements Playback.Callback {
 
     private static final String TAG = LogHelper.makeLogTag(PlaybackManager.class);
     // Action to thumbs up a media item
-    private static final String CUSTOM_ACTION_THUMBS_UP = "com.example.android.uamp.THUMBS_UP";
+    private static final String CUSTOM_ACTION_THUMBS_UP = "rocks.stalin.android.app.THUMBS_UP";
 
     private MusicProvider mMusicProvider;
     private QueueManager mQueueManager;
@@ -163,7 +162,6 @@ public class PlaybackManager implements Playback.Callback {
         LogHelper.d(TAG, "updatePlaybackState, setting Favorite custom action of music ",
                 musicId, " current favorite=", mMusicProvider.isFavorite(musicId));
         Bundle customActionExtras = new Bundle();
-        WearHelper.setShowCustomActionOnWear(customActionExtras, true);
         stateBuilder.addCustomAction(new PlaybackStateCompat.CustomAction.Builder(
                 CUSTOM_ACTION_THUMBS_UP, mResources.getString(R.string.favorite), favoriteIcon)
                 .setExtras(customActionExtras)

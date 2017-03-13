@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.playback;
+package rocks.stalin.android.app.playback;
 
 import android.content.Context;
 import android.net.Uri;
@@ -21,10 +21,10 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.text.TextUtils;
 
-import com.example.android.uamp.model.MusicProvider;
-import com.example.android.uamp.model.MusicProviderSource;
-import com.example.android.uamp.utils.LogHelper;
-import com.example.android.uamp.utils.MediaIDHelper;
+import rocks.stalin.android.app.model.MusicProvider;
+import rocks.stalin.android.app.model.MusicProviderSource;
+import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.MediaIDHelper;
 import com.google.android.gms.cast.MediaInfo;
 import com.google.android.gms.cast.MediaMetadata;
 import com.google.android.gms.cast.MediaStatus;

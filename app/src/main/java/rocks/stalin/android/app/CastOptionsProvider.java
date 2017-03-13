@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.uamp;
+package rocks.stalin.android.app;
 
 import android.content.Context;
 

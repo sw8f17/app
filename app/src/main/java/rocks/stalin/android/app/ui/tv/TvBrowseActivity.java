@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.ui.tv;
+package rocks.stalin.android.app.ui.tv;
 
 import android.content.ComponentName;
 import android.content.Intent;
@@ -24,9 +24,9 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 
-import com.example.android.uamp.MusicService;
-import com.example.android.uamp.R;
-import com.example.android.uamp.utils.LogHelper;
+import rocks.stalin.android.app.MusicService;
+import rocks.stalin.android.app.R;
+import rocks.stalin.android.app.utils.LogHelper;
 
 /**
  * Main activity for the Android TV user interface.
@@ -35,8 +35,8 @@ public class TvBrowseActivity extends FragmentActivity
         implements TvBrowseFragment.MediaFragmentListener {
 
     private static final String TAG = LogHelper.makeLogTag(TvBrowseActivity.class);
-    public static final String SAVED_MEDIA_ID="com.example.android.uamp.MEDIA_ID";
-    public static final String BROWSE_TITLE = "com.example.android.uamp.BROWSE_TITLE";
+    public static final String SAVED_MEDIA_ID="rocks.stalin.android.app.MEDIA_ID";
+    public static final String BROWSE_TITLE = "rocks.stalin.android.app.BROWSE_TITLE";
 
     private MediaBrowserCompat mMediaBrowser;
 

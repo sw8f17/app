@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.ui.tv;
+package rocks.stalin.android.app.ui.tv;
 
 import android.content.Context;
 import android.support.v17.leanback.widget.ImageCardView;
@@ -23,10 +23,10 @@ import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.view.ViewGroup;
 
-import com.example.android.uamp.R;
-import com.example.android.uamp.ui.MediaItemViewHolder;
-import com.example.android.uamp.utils.LogHelper;
-import com.example.android.uamp.utils.QueueHelper;
+import rocks.stalin.android.app.R;
+import rocks.stalin.android.app.ui.MediaItemViewHolder;
+import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.QueueHelper;
 
 public class CardPresenter extends Presenter {
     private static final String TAG = LogHelper.makeLogTag(CardPresenter.class);

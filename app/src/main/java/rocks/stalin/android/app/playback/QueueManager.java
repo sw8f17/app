@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.uamp.playback;
+package rocks.stalin.android.app.playback;
 
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -23,12 +23,12 @@ import android.support.annotation.NonNull;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 
-import com.example.android.uamp.AlbumArtCache;
-import com.example.android.uamp.R;
-import com.example.android.uamp.model.MusicProvider;
-import com.example.android.uamp.utils.LogHelper;
-import com.example.android.uamp.utils.MediaIDHelper;
-import com.example.android.uamp.utils.QueueHelper;
+import rocks.stalin.android.app.AlbumArtCache;
+import rocks.stalin.android.app.R;
+import rocks.stalin.android.app.model.MusicProvider;
+import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.MediaIDHelper;
+import rocks.stalin.android.app.utils.QueueHelper;
 
 import java.util.ArrayList;
 import java.util.Arrays;

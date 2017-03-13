@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.ui;
+package rocks.stalin.android.app.ui;
 
 import android.app.ActivityManager;
 import android.content.ComponentName;
@@ -28,11 +28,11 @@ import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 
-import com.example.android.uamp.MusicService;
-import com.example.android.uamp.R;
-import com.example.android.uamp.utils.LogHelper;
-import com.example.android.uamp.utils.NetworkHelper;
-import com.example.android.uamp.utils.ResourceHelper;
+import rocks.stalin.android.app.MusicService;
+import rocks.stalin.android.app.R;
+import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.NetworkHelper;
+import rocks.stalin.android.app.utils.ResourceHelper;
 
 /**
  * Base activity for activities that need to show a playback control fragment when media is playing.

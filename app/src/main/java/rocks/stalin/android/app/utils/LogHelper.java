@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.utils;
+package rocks.stalin.android.app.utils;
 
 import android.util.Log;
 
-import com.example.android.uamp.BuildConfig;
+import rocks.stalin.android.app.BuildConfig;
 
 public class LogHelper {
 
-    private static final String LOG_PREFIX = "uamp_";
+    private static final String LOG_PREFIX = "smus_";
     private static final int LOG_PREFIX_LENGTH = LOG_PREFIX.length();
     private static final int MAX_LOG_TAG_LENGTH = 23;
 

@@ -14,11 +14,11 @@
 * limitations under the License.
 */
 
-package com.example.android.uamp;
+package rocks.stalin.android.app;
 
-import com.example.android.uamp.model.MusicProvider;
-import com.example.android.uamp.model.MusicProviderSource;
-import com.example.android.uamp.utils.SimpleMusicProviderSource;
+import rocks.stalin.android.app.model.MusicProvider;
+import rocks.stalin.android.app.model.MusicProviderSource;
+import rocks.stalin.android.app.utils.SimpleMusicProviderSource;
 
 import java.util.concurrent.CountDownLatch;
 

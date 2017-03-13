@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.ui;
+package rocks.stalin.android.app.ui;
 
 import android.app.Activity;
 import android.app.UiModeManager;
@@ -21,8 +21,8 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 
-import com.example.android.uamp.ui.tv.TvPlaybackActivity;
-import com.example.android.uamp.utils.LogHelper;
+import rocks.stalin.android.app.ui.tv.TvPlaybackActivity;
+import rocks.stalin.android.app.utils.LogHelper;
 
 /**
  * The activity for the Now Playing Card PendingIntent.

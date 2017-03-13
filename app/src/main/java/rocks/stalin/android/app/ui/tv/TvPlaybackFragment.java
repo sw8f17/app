@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.ui.tv;
+package rocks.stalin.android.app.ui.tv;
 
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
@@ -48,9 +48,9 @@ import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 
-import com.example.android.uamp.AlbumArtCache;
-import com.example.android.uamp.utils.LogHelper;
-import com.example.android.uamp.utils.QueueHelper;
+import rocks.stalin.android.app.AlbumArtCache;
+import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.QueueHelper;
 
 import java.util.List;
 

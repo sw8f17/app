@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.uamp.ui.tv;
+package rocks.stalin.android.app.ui.tv;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -33,8 +33,8 @@ import android.support.v17.leanback.widget.Presenter;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.view.View;
 
-import com.example.android.uamp.AlbumArtCache;
-import com.example.android.uamp.ui.MediaItemViewHolder;
+import rocks.stalin.android.app.AlbumArtCache;
+import rocks.stalin.android.app.ui.MediaItemViewHolder;
 
 public class CardViewHolder extends Presenter.ViewHolder {
 

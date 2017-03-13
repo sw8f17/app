@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package com.example.android.uamp.utils;
+package rocks.stalin.android.app.utils;
 
 import android.support.v4.media.MediaMetadataCompat;
 
-import com.example.android.uamp.model.MusicProviderSource;
+import rocks.stalin.android.app.model.MusicProviderSource;
 
 import java.util.ArrayList;
 import java.util.Iterator;

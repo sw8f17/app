@@ -13,25 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.playback;
+package rocks.stalin.android.app.playback;
 
 import android.content.BroadcastReceiver;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.PowerManager;
+import android.provider.MediaStore;
+import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.text.TextUtils;
 
-import com.example.android.uamp.MusicService;
-import com.example.android.uamp.model.MusicProvider;
-import com.example.android.uamp.model.MusicProviderSource;
-import com.example.android.uamp.utils.LogHelper;
-import com.example.android.uamp.utils.MediaIDHelper;
+import rocks.stalin.android.app.MusicService;
+import rocks.stalin.android.app.model.MusicProvider;
+import rocks.stalin.android.app.model.MusicProviderSource;
+import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.MediaIDHelper;
 
 import java.io.IOException;
 
@@ -176,11 +180,20 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
             MediaMetadataCompat track = mMusicProvider.getMusic(
                     MediaIDHelper.extractMusicIDFromMediaID(item.getDescription().getMediaId()));
 
+            String source = null;
+            Uri uriSource = null;
             //noinspection ResourceType
-            String source = track.getString(MusicProviderSource.CUSTOM_METADATA_TRACK_SOURCE);
-            if (source != null) {
-                source = source.replaceAll(" ", "%20"); // Escape spaces for URLs
+            if (track.containsKey(MusicProviderSource.CUSTOM_METADATA_TRACK_SOURCE)){
+                source = track.getString(MusicProviderSource.CUSTOM_METADATA_TRACK_SOURCE);
+                if (source != null) {
+                    source = source.replaceAll(" ", "%20"); // Escape spaces for URLs
+                }
+            } else {
+                uriSource = ContentUris.withAppendedId(
+                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                        Long.parseLong(track.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID)));
             }
+
 
             try {
                 createMediaPlayerIfNeeded();
@@ -188,7 +201,15 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
                 mState = PlaybackStateCompat.STATE_BUFFERING;
 
                 mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-                mMediaPlayer.setDataSource(source);
+                if (uriSource != null) {
+                    mMediaPlayer.setDataSource(mContext, uriSource);
+                } else {
+                    mMediaPlayer.setDataSource(source);
+                    // If we are streaming from the internet, we want to hold a
+                    // Wifi lock, which prevents the Wifi radio from going to
+                    // sleep while the song is playing.
+                    mWifiLock.acquire();
+                }
 
                 // Starts preparing the media player in the background. When
                 // it's done, it will call our OnPreparedListener (that is,
@@ -196,11 +217,6 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
                 // listener to 'this'). Until the media player is prepared,
                 // we *cannot* call start() on it!
                 mMediaPlayer.prepareAsync();
-
-                // If we are streaming from the internet, we want to hold a
-                // Wifi lock, which prevents the Wifi radio from going to
-                // sleep while the song is playing.
-                mWifiLock.acquire();
 
                 if (mCallback != null) {
                     mCallback.onPlaybackStatusChanged(mState);

@@ -29,6 +29,7 @@ import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.MediaIDHelper;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -37,6 +38,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_ALL_MUSICS;
 import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_MUSICS_BY_GENRE;
 import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_ROOT;
 import static rocks.stalin.android.app.utils.MediaIDHelper.createMediaID;
@@ -113,6 +115,21 @@ public class MusicProvider {
             return Collections.emptyList();
         }
         return mMusicListByGenre.get(genre);
+    }
+
+    /**
+     * Get music tracks
+     *
+     */
+    public Iterable<MediaMetadataCompat> getAllMusics() {
+        if (mCurrentState != State.INITIALIZED) {
+            return Collections.emptyList();
+        }
+        ArrayList<MediaMetadataCompat> result = new ArrayList<>();
+        for (MutableMediaMetadata track : mMusicListById.values()) {
+            result.add(track.metadata);
+        }
+        return result;
     }
 
     /**
@@ -242,7 +259,10 @@ public class MusicProvider {
         ConcurrentMap<String, List<MediaMetadataCompat>> newMusicListByGenre = new ConcurrentHashMap<>();
 
         for (MutableMediaMetadata m : mMusicListById.values()) {
-            String genre = m.metadata.getString(MediaMetadataCompat.METADATA_KEY_GENRE);
+            String genre = "";
+            if (m.metadata.containsKey(MediaMetadataCompat.METADATA_KEY_GENRE)) {
+                genre = m.metadata.getString(MediaMetadataCompat.METADATA_KEY_GENRE);
+            }
             List<MediaMetadataCompat> list = newMusicListByGenre.get(genre);
             if (list == null) {
                 list = new ArrayList<>();
@@ -285,7 +305,12 @@ public class MusicProvider {
         }
 
         if (MEDIA_ID_ROOT.equals(mediaId)) {
-            mediaItems.add(createBrowsableMediaItemForRoot(resources));
+            mediaItems.addAll(createBrowsableMediaItemForRoot(resources));
+
+        } else if (MEDIA_ID_ALL_MUSICS.equals(mediaId)) {
+            for (MediaMetadataCompat metadata : getAllMusics()) {
+                mediaItems.add(createMediaItem(metadata));
+            }
 
         } else if (MEDIA_ID_MUSICS_BY_GENRE.equals(mediaId)) {
             for (String genre : getGenres()) {
@@ -304,16 +329,29 @@ public class MusicProvider {
         return mediaItems;
     }
 
-    private MediaBrowserCompat.MediaItem createBrowsableMediaItemForRoot(Resources resources) {
-        MediaDescriptionCompat description = new MediaDescriptionCompat.Builder()
-                .setMediaId(MEDIA_ID_MUSICS_BY_GENRE)
-                .setTitle(resources.getString(R.string.browse_genres))
-                .setSubtitle(resources.getString(R.string.browse_genre_subtitle))
-                .setIconUri(Uri.parse("android.resource://" +
-                        "rocks.stalin.android.app/drawable/ic_by_genre"))
-                .build();
-        return new MediaBrowserCompat.MediaItem(description,
-                MediaBrowserCompat.MediaItem.FLAG_BROWSABLE);
+    private Collection<MediaBrowserCompat.MediaItem> createBrowsableMediaItemForRoot(Resources resources) {
+        ArrayList<MediaBrowserCompat.MediaItem> rootMenuItems = new ArrayList<>();
+
+        rootMenuItems.add(new MediaBrowserCompat.MediaItem(
+                new MediaDescriptionCompat.Builder()
+                        .setMediaId(MEDIA_ID_ALL_MUSICS)
+                        .setTitle(resources.getString(R.string.browse_all))
+                        .setSubtitle(resources.getString(R.string.browse_all_subtitle))
+                        .setIconUri(Uri.parse("android.resource://" +
+                                "rocks.stalin.android.app/drawable/ic_by_genre"))
+                        .build(),
+                MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+        rootMenuItems.add(new MediaBrowserCompat.MediaItem(
+                new MediaDescriptionCompat.Builder()
+                        .setMediaId(MEDIA_ID_MUSICS_BY_GENRE)
+                        .setTitle(resources.getString(R.string.browse_genres))
+                        .setSubtitle(resources.getString(R.string.browse_genre_subtitle))
+                        .setIconUri(Uri.parse("android.resource://" +
+                                "rocks.stalin.android.app/drawable/ic_by_genre"))
+                        .build(),
+                MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+        return rootMenuItems;
     }
 
     private MediaBrowserCompat.MediaItem createBrowsableMediaItemForGenre(String genre,

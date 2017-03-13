@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.android.uamp.ui.tv;
+package rocks.stalin.android.app.ui.tv;
 
 import android.content.ComponentName;
 import android.os.Bundle;
@@ -25,9 +25,9 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 
-import com.example.android.uamp.MusicService;
-import com.example.android.uamp.R;
-import com.example.android.uamp.utils.LogHelper;
+import rocks.stalin.android.app.MusicService;
+import rocks.stalin.android.app.R;
+import rocks.stalin.android.app.utils.LogHelper;
 
 /**
  * Activity used to display details of the currently playing song, along with playback controls

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.uamp.utils;
+package rocks.stalin.android.app.utils;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -24,14 +24,14 @@ import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.text.TextUtils;
 
-import com.example.android.uamp.VoiceSearchParams;
-import com.example.android.uamp.model.MusicProvider;
+import rocks.stalin.android.app.VoiceSearchParams;
+import rocks.stalin.android.app.model.MusicProvider;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.example.android.uamp.utils.MediaIDHelper.MEDIA_ID_MUSICS_BY_GENRE;
-import static com.example.android.uamp.utils.MediaIDHelper.MEDIA_ID_MUSICS_BY_SEARCH;
+import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_MUSICS_BY_GENRE;
+import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_MUSICS_BY_SEARCH;
 
 /**
  * Utility class to help on queue related tasks.

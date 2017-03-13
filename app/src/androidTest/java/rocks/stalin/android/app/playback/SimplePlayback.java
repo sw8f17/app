@@ -13,7 +13,7 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-package com.example.android.uamp.playback;
+package rocks.stalin.android.app.playback;
 
 import android.support.v4.media.session.MediaSessionCompat;
 
