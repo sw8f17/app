@@ -21,6 +21,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.view.MotionEventCompat;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -51,15 +52,23 @@ public class ExternalStorageSource implements MusicProviderSource {
                 int titleColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.TITLE);
                 int idColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media._ID);
                 int artistColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ARTIST);
+                int albumColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.ALBUM);
+                int durationColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.DURATION);
+                int isMusicColumn = musicCursor.getColumnIndex(MediaStore.Audio.Media.IS_MUSIC);
 
                 do {
                     LogHelper.d(TAG, "i'm in da do");
-                    tracks.add(new MediaMetadataCompat.Builder()
-                            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, musicCursor.getString(idColumn))
-                            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, musicCursor.getString(titleColumn))
-                            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, musicCursor.getString(artistColumn))
-                            .putString(MediaMetadataCompat.METADATA_KEY_GENRE, "Dank")
-                            .build());
+                    if (musicCursor.getInt(isMusicColumn) != 0) {
+                        tracks.add(new MediaMetadataCompat.Builder()
+                                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, musicCursor.getString(idColumn))
+                                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, musicCursor.getString(titleColumn))
+                                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, musicCursor.getString(artistColumn))
+                                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, musicCursor.getString(albumColumn))
+                                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, "https://raw.githubusercontent.com/sw8f17/logo/master/scotty.png")
+                                .putString(MediaMetadataCompat.METADATA_KEY_GENRE, "Unknown")
+                                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, musicCursor.getLong(durationColumn))
+                                .build());
+                    }
                 } while (musicCursor.moveToNext());
                 musicCursor.close();
             }

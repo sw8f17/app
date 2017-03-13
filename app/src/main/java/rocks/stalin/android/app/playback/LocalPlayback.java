@@ -105,7 +105,7 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
         this.mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         // Create the Wifi lock (this does not acquire the lock, this just creates it)
         this.mWifiLock = ((WifiManager) context.getSystemService(Context.WIFI_SERVICE))
-                .createWifiLock(WifiManager.WIFI_MODE_FULL, "uAmp_lock");
+                .createWifiLock(WifiManager.WIFI_MODE_FULL, "smus_lock");
         this.mState = PlaybackStateCompat.STATE_NONE;
     }
 

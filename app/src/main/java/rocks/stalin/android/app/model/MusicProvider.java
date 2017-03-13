@@ -16,6 +16,7 @@
 
 package rocks.stalin.android.app.model;
 
+import android.app.Activity;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.net.Uri;
