@@ -73,28 +73,6 @@
             android:icon="@drawable/ic_launcher">
         </activity>
 
-        <!-- Main activity for Android TV user interface -->
-        <activity
-            android:name=".ui.tv.TvBrowseActivity"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.UAmp.TVLeanback" >
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".ui.tv.TvVerticalGridActivity"
-            android:theme="@style/Theme.UAmp.TVLeanback"
-            android:parentActivityName=".ui.tv.TvBrowseActivity" />
-
-        <!-- Android TV UI when playing a song -->
-        <activity
-            android:name=".ui.tv.TvPlaybackActivity"
-            android:theme="@style/Theme.UAmp.TVLeanback"
-            android:parentActivityName=".ui.tv.TvBrowseActivity" />
-
 
         <!-- Main music service, provides media browsing and media playback services to
          consumers through MediaBrowserService and MediaSession. Consumers connect to it through

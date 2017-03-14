@@ -42,7 +42,6 @@ import rocks.stalin.android.app.playback.PlaybackManager;
 import rocks.stalin.android.app.playback.QueueManager;
 import rocks.stalin.android.app.ui.NowPlayingActivity;
 import rocks.stalin.android.app.utils.LogHelper;
-import rocks.stalin.android.app.utils.TvHelper;
 
 import com.google.android.gms.cast.framework.CastContext;
 import com.google.android.gms.cast.framework.CastSession;
@@ -200,12 +199,10 @@ public class MusicService extends MediaBrowserServiceCompat implements
             throw new IllegalStateException("Could not create a MediaNotificationManager", e);
         }
 
-        if (!TvHelper.isTvUiMode(this)) {
-            mCastSessionManager = CastContext.getSharedInstance(this).getSessionManager();
-            mCastSessionManagerListener = new CastSessionManagerListener();
-            mCastSessionManager.addSessionManagerListener(mCastSessionManagerListener,
-                    CastSession.class);
-        }
+        mCastSessionManager = CastContext.getSharedInstance(this).getSessionManager();
+        mCastSessionManagerListener = new CastSessionManagerListener();
+        mCastSessionManager.addSessionManagerListener(mCastSessionManagerListener,
+                CastSession.class);
 
         mMediaRouter = MediaRouter.getInstance(getApplicationContext());
     }
