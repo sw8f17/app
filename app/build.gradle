@@ -43,3 +43,17 @@ dependencies {
     compile 'com.android.support:design:25.3.0'
     testCompile 'junit:junit:4.12'
 }
+
+task javadoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    println(android.getBootClasspath())
+    destinationDir = file("../javadoc/")
+    failOnError false
+}
+
+afterEvaluate {
+    javadoc.classpath += files(android.applicationVariants.collect { variant ->
+        variant.javaCompile.classpath.files
+    })
+}
