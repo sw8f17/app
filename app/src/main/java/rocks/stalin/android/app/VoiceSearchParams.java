@@ -53,12 +53,7 @@ public final class VoiceSearchParams {
             if (extras == null) {
                 isUnstructured = true;
             } else {
-                String genreKey;
-                if (Build.VERSION.SDK_INT >= 21) {
-                    genreKey = MediaStore.EXTRA_MEDIA_GENRE;
-                } else {
-                    genreKey = "android.intent.extra.genre";
-                }
+                String genreKey = MediaStore.EXTRA_MEDIA_GENRE;
 
                 String mediaFocus = extras.getString(MediaStore.EXTRA_MEDIA_FOCUS);
                 if (TextUtils.equals(mediaFocus, MediaStore.Audio.Genres.ENTRY_CONTENT_TYPE)) {

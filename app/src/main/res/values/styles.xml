@@ -15,15 +15,6 @@
   limitations under the License.
   -->
 <resources>
-
-    <style name="UAmpAppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="colorPrimary">#ffff5722</item>
-        <item name="colorPrimaryDark">#ffbf360c</item>
-        <item name="colorAccent">#ffff5722</item>
-        <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
-    </style>
-
-
     <style name="SmusTheme" parent="Theme.AppCompat.NoActionBar">
         <!-- colorPrimaryDark is currently used in Android Auto for:
              - App background
@@ -31,7 +22,7 @@
              - Notification icon badge tinting
              - Overview “now playing” icon tinting
          -->
-        <item name="colorPrimaryDark">@color/smus_bg</item>
+        <item name="colorPrimaryDark">@color/smus_primary_dark</item>
 
         <!-- colorAccent is used in Android Auto for:
              - Spinner
@@ -39,18 +30,7 @@
              - floating action button background (Play/Pause in media apps)
          -->
         <item name="colorAccent">@color/bt_accent</item>
-        <item name="colorPrimary">@color/smus_bg</item>
-    </style>
-
-    <style name="WearTheme" parent="UAmpAppTheme">
-        <!-- colorPrimaryDark is currently used on Android Wear for:
-             - Card background on media browse
-             - Card background on 4-way media controls
-         -->
-        <item name="colorPrimaryDark">#ffbf360c</item>
-    </style>
-
-
-    <style name="Theme.UAmp.TVLeanback" parent="Theme.Leanback">
+        <item name="colorPrimary">@color/smus_primary</item>
+        <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
     </style>
 </resources>
