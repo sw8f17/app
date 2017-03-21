@@ -195,10 +195,18 @@ public class MusicProviderTest {
                 "INVALID_MEDIA_ID", resources);
         assertEquals(0, invalid.size());
 
-        // test level 1 (list of category types - only "by genre" for now)
+        // test level 1 (list of category types - "by genre and all")
         List<MediaBrowserCompat.MediaItem> level1 = provider.getChildren(
                 MediaIDHelper.MEDIA_ID_ROOT, resources);
-        assertEquals(1, level1.size());
+        assertEquals(2, level1.size());
+        assertEquals(MediaIDHelper.MEDIA_ID_ALL_MUSICS, level1.get(0).getMediaId());
+        assertEquals(MediaIDHelper.MEDIA_ID_MUSICS_BY_GENRE, level1.get(1).getMediaId());
+
+
+        // test level 2 (all music)
+        List<MediaBrowserCompat.MediaItem> level2AllMusic = provider.getChildren(
+                level1.get(0).getMediaId(), resources);
+        assertEquals(5, level2AllMusic.size());
 
         // test level 2 (list of genres)
         int genreCount = 0;
@@ -206,8 +214,9 @@ public class MusicProviderTest {
             genreCount++;
         }
         List<MediaBrowserCompat.MediaItem> level2 = provider.getChildren(
-                level1.get(0).getMediaId(), resources);
+                level1.get(1).getMediaId(), resources);
         assertEquals(genreCount, level2.size());
+
 
         // test level 3 (list of music for a given genre)
         List<MediaBrowserCompat.MediaItem> level3 = provider.getChildren(

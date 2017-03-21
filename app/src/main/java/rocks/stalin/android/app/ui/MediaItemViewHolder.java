@@ -97,10 +97,8 @@ public class MediaItemViewHolder {
     }
 
     private static void initializeColorStateLists(Context ctx) {
-        sColorStateNotPlaying = ColorStateList.valueOf(ctx.getResources().getColor(
-            R.color.media_item_icon_not_playing));
-        sColorStatePlaying = ColorStateList.valueOf(ctx.getResources().getColor(
-            R.color.media_item_icon_playing));
+        sColorStateNotPlaying = ColorStateList.valueOf(ContextCompat.getColor(ctx, R.color.media_item_icon_not_playing));
+        sColorStatePlaying = ColorStateList.valueOf(ContextCompat.getColor(ctx, R.color.media_item_icon_playing));
     }
 
     public static Drawable getDrawableByState(Context context, int state) {
@@ -144,8 +142,7 @@ public class MediaItemViewHolder {
     }
 
     public static int getStateFromController(Context context) {
-        MediaControllerCompat controller = ((FragmentActivity) context)
-                .getSupportMediaController();
+        MediaControllerCompat controller = MediaControllerCompat.getMediaController((FragmentActivity) context);
         PlaybackStateCompat pbState = controller.getPlaybackState();
         if (pbState == null ||
                 pbState.getState() == PlaybackStateCompat.STATE_ERROR) {

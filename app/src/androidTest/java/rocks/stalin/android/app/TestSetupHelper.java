@@ -18,7 +18,6 @@ package rocks.stalin.android.app;
 
 import rocks.stalin.android.app.model.MusicProvider;
 import rocks.stalin.android.app.model.MusicProviderSource;
-import rocks.stalin.android.app.utils.SimpleMusicProviderSource;
 
 import java.util.concurrent.CountDownLatch;
 

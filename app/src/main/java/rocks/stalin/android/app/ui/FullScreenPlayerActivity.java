@@ -146,11 +146,13 @@ public class FullScreenPlayerActivity extends ActionBarCastActivity {
         mLoading = (ProgressBar) findViewById(R.id.progressBar1);
         mControllers = findViewById(R.id.controllers);
 
+        final FullScreenPlayerActivity mSelf = this;
+
         mSkipNext.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 MediaControllerCompat.TransportControls controls =
-                    getSupportMediaController().getTransportControls();
+                    MediaControllerCompat.getMediaController(mSelf).getTransportControls();
                 controls.skipToNext();
             }
         });
@@ -159,7 +161,7 @@ public class FullScreenPlayerActivity extends ActionBarCastActivity {
             @Override
             public void onClick(View v) {
                 MediaControllerCompat.TransportControls controls =
-                    getSupportMediaController().getTransportControls();
+                    MediaControllerCompat.getMediaController(mSelf).getTransportControls();
                 controls.skipToPrevious();
             }
         });
@@ -167,10 +169,10 @@ public class FullScreenPlayerActivity extends ActionBarCastActivity {
         mPlayPause.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                PlaybackStateCompat state = getSupportMediaController().getPlaybackState();
+                PlaybackStateCompat state = MediaControllerCompat.getMediaController(mSelf).getPlaybackState();
                 if (state != null) {
                     MediaControllerCompat.TransportControls controls =
-                            getSupportMediaController().getTransportControls();
+                            MediaControllerCompat.getMediaController(mSelf).getTransportControls();
                     switch (state.getState()) {
                         case PlaybackStateCompat.STATE_PLAYING: // fall through
                         case PlaybackStateCompat.STATE_BUFFERING:
@@ -202,7 +204,7 @@ public class FullScreenPlayerActivity extends ActionBarCastActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                getSupportMediaController().getTransportControls().seekTo(seekBar.getProgress());
+                MediaControllerCompat.getMediaController(mSelf).getTransportControls().seekTo(seekBar.getProgress());
                 scheduleSeekbarUpdate();
             }
         });
@@ -223,7 +225,7 @@ public class FullScreenPlayerActivity extends ActionBarCastActivity {
             finish();
             return;
         }
-        setSupportMediaController(mediaController);
+        MediaControllerCompat.setMediaController(this, mediaController);
         mediaController.registerCallback(mCallback);
         PlaybackStateCompat state = mediaController.getPlaybackState();
         updatePlaybackState(state);
@@ -283,8 +285,8 @@ public class FullScreenPlayerActivity extends ActionBarCastActivity {
         if (mMediaBrowser != null) {
             mMediaBrowser.disconnect();
         }
-        if (getSupportMediaController() != null) {
-            getSupportMediaController().unregisterCallback(mCallback);
+        if (MediaControllerCompat.getMediaController(this) != null) {
+            MediaControllerCompat.getMediaController(this).unregisterCallback(mCallback);
         }
     }
 
@@ -349,8 +351,8 @@ public class FullScreenPlayerActivity extends ActionBarCastActivity {
             return;
         }
         mLastPlaybackState = state;
-        if (getSupportMediaController() != null && getSupportMediaController().getExtras() != null) {
-            String castName = getSupportMediaController()
+        if (MediaControllerCompat.getMediaController(this) != null && MediaControllerCompat.getMediaController(this).getExtras() != null) {
+            String castName = MediaControllerCompat.getMediaController(this)
                     .getExtras().getString(MusicService.EXTRA_CONNECTED_CAST);
             String line3Text = castName == null ? "" : getResources()
                         .getString(R.string.casting_to_device, castName);

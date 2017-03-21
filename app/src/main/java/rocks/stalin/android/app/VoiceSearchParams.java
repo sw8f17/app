@@ -15,7 +15,6 @@
  */
 package rocks.stalin.android.app;
 
-import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.text.TextUtils;

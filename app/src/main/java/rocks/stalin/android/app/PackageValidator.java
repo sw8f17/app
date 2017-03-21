@@ -15,6 +15,7 @@
  */
 package rocks.stalin.android.app;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -169,6 +170,7 @@ public class PackageValidator {
     /**
      * @return {@link PackageInfo} for the package name or null if it's not found.
      */
+    @SuppressLint("PackageManagerGetSignatures")
     private PackageInfo getPackageInfo(Context context, String pkgName) {
         try {
             final PackageManager pm = context.getPackageManager();

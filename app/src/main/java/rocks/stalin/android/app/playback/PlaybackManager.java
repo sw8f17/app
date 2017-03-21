@@ -126,7 +126,7 @@ public class PlaybackManager implements Playback.Callback {
         if (error != null) {
             // Error states are really only supposed to be used for errors that cause playback to
             // stop unexpectedly and persist until the user takes action to fix it.
-            stateBuilder.setErrorMessage(error);
+            stateBuilder.setErrorMessage(PlaybackStateCompat.ERROR_CODE_UNKNOWN_ERROR, error);
             state = PlaybackStateCompat.STATE_ERROR;
         }
         //noinspection ResourceType

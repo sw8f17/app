@@ -21,7 +21,6 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.support.v4.media.MediaMetadataCompat;
-import android.support.v4.view.MotionEventCompat;
 
 import java.util.ArrayList;
 import java.util.Iterator;
