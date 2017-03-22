@@ -48,4 +48,6 @@
     <string name="media_route_menu_title">Play on…</string>
     <string name="browse_all">All</string>
     <string name="browse_all_subtitle">All songs</string>
+    <string name="discover_nearby_devices">Discover nearby devices</string>
+    <string name="share_device_information">Share device information</string>
 </resources>

@@ -280,7 +280,10 @@ public class PlaybackManager implements Playback.Callback {
         @Override
         public void onSeekTo(long position) {
             LogHelper.d(TAG, "onSeekTo:", position);
+            long t1 = System.nanoTime();
             mPlayback.seekTo((int) position);
+            long t2 = System.nanoTime();
+            LogHelper.i(TAG, "seekTook:", t2 - t1);
         }
 
         @Override

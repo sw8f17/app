@@ -321,7 +321,7 @@ public class CastPlayback implements Playback {
         }
     }
 
-    private class CastMediaClientListener implements RemoteMediaClient.Listener {
+    private abstract class CastMediaClientListener implements RemoteMediaClient.Listener {
 
         @Override
         public void onMetadataUpdated() {

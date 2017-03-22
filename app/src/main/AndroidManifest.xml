@@ -37,6 +37,11 @@
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
 
+        <!-- Infor to use the nearby message api -->
+        <meta-data
+            android:name="rocks.stalin.android.app.AIzaSyC-aAEIFlGz-qp4O7hGh55grUeA6FeLkgY"
+            android:value="381635483141-drksaq3hfnfs723odtpl3q2ctl1ki73f.apps.googleusercontent.com" />
+
         <!-- Main activity for music browsing on phone -->
         <activity
             android:name=".ui.MusicPlayerActivity"
