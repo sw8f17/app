@@ -27,6 +27,7 @@ import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -34,6 +35,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import rocks.stalin.android.app.R;
+import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.MediaIDHelper;
 
 public class MediaItemViewHolder {
@@ -78,6 +80,11 @@ public class MediaItemViewHolder {
         MediaDescriptionCompat description = item.getDescription();
         holder.mTitleView.setText(description.getTitle());
         holder.mDescriptionView.setText(description.getSubtitle());
+        if (item.isBrowsable() && description.getIconUri() != null) {
+            holder.mImageView.setImageURI(description.getIconUri());
+            holder.mImageView.setVisibility(View.VISIBLE);
+            return convertView;
+        }
 
         // If the state of convertView is different, we need to adapt the view to the
         // new state.

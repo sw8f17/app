@@ -16,10 +16,13 @@
 
 package rocks.stalin.android.app.model;
 
+import android.content.ContentResolver;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Bundle;
+import android.support.v4.content.ContentResolverCompat;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
@@ -337,8 +340,12 @@ public class MusicProvider {
                         .setMediaId(MEDIA_ID_ALL_MUSICS)
                         .setTitle(resources.getString(R.string.browse_all))
                         .setSubtitle(resources.getString(R.string.browse_all_subtitle))
-                        .setIconUri(Uri.parse("android.resource://" +
-                                "rocks.stalin.android.app/drawable/ic_by_genre"))
+                        .setIconUri(new Uri.Builder()
+                                .scheme(ContentResolver.SCHEME_ANDROID_RESOURCE)
+                                .authority(resources.getResourcePackageName(R.drawable.ic_allmusic_black_24dp))
+                                .appendPath(resources.getResourceTypeName(R.drawable.ic_allmusic_black_24dp))
+                                .appendPath(resources.getResourceEntryName(R.drawable.ic_allmusic_black_24dp))
+                                .build())
                         .build(),
                 MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
         rootMenuItems.add(new MediaBrowserCompat.MediaItem(
@@ -346,8 +353,12 @@ public class MusicProvider {
                         .setMediaId(MEDIA_ID_MUSICS_BY_GENRE)
                         .setTitle(resources.getString(R.string.browse_genres))
                         .setSubtitle(resources.getString(R.string.browse_genre_subtitle))
-                        .setIconUri(Uri.parse("android.resource://" +
-                                "rocks.stalin.android.app/drawable/ic_by_genre"))
+                        .setIconUri(new Uri.Builder()
+                                .scheme(ContentResolver.SCHEME_ANDROID_RESOURCE)
+                                .authority(resources.getResourcePackageName(R.drawable.ic_by_genre))
+                                .appendPath(resources.getResourceTypeName(R.drawable.ic_by_genre))
+                                .appendPath(resources.getResourceEntryName(R.drawable.ic_by_genre))
+                                .build())
                         .build(),
                 MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
 
