@@ -46,6 +46,24 @@ parallel (
 				junit '**/build/outputs/androidTest-results/connected/*.xml'
 			}
 		}
+	},
+	"javadoc" : {
+		node {
+			stage('Javadoc') {
+				deleteDir()
+				unstash "sources"
+
+				gradle "javadoc"
+				publishHTML([
+					allowMissing: false,
+					alwaysLinkToLastBuild: false,
+					keepAll: false,
+					reportDir: 'javadoc',
+					reportFiles: 'index.html',
+					reportName: 'Javadoc'
+				])
+			}
+		}
 	}
 )
 
