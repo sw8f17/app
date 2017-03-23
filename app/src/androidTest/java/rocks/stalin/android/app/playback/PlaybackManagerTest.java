@@ -63,6 +63,21 @@ public class PlaybackManagerTest {
             public String getString(int id, Object... formatArgs) throws NotFoundException {
                 return "";
             }
+            @NonNull
+            @Override
+            public String getResourcePackageName(int id) throws NotFoundException {
+                return "";
+            }
+            @NonNull
+            @Override
+            public String getResourceTypeName(int id) throws NotFoundException {
+                return "";
+            }
+            @NonNull
+            @Override
+            public String getResourceEntryName(int id) throws NotFoundException {
+                return "";
+            }
         };
     }
 
