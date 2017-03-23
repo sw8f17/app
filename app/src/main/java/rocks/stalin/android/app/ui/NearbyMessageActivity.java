@@ -7,6 +7,8 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.media.session.MediaControllerCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SwitchCompat;
 import android.text.TextUtils;
@@ -60,7 +62,7 @@ import rocks.stalin.android.app.utils.DeviceMessage;
  * durations. In this sample, we set the TTL for publishing and subscribing to three minutes
  * using a {@link Strategy}. When the TTL is reached, a publication or subscription expires.
  */
-public class NearbyMessageActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
+public class NearbyMessageActivity extends BaseActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener {
 
     private static final String TAG = NearbyMessageActivity.class.getSimpleName();
@@ -123,15 +125,18 @@ public class NearbyMessageActivity extends AppCompatActivity implements GoogleAp
 
     @Override
     protected void onStop() {
-        super.onStop();
+
+        super.onStop();/*
         if (mGoogleApiClient != null && mGoogleApiClient.isConnected())
             mGoogleApiClient.disconnect();
+        */
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.nearby_message);
+        initializeToolbar();
 
         mSubscribeSwitch = (SwitchCompat) findViewById(R.id.subscribe_switch);
         mPublishSwitch = (SwitchCompat) findViewById(R.id.publish_switch);
@@ -147,6 +152,7 @@ public class NearbyMessageActivity extends AppCompatActivity implements GoogleAp
                 // Called when a new message is found.
                 mNearbyDevicesArrayAdapter.add(
                         DeviceMessage.fromNearbyMessage(message).getMessageBody());
+                tryPlaybackOnMessageRetrived();
             }
 
             @Override
@@ -154,6 +160,7 @@ public class NearbyMessageActivity extends AppCompatActivity implements GoogleAp
                 // Called when a message is no longer detectable nearby.
                 mNearbyDevicesArrayAdapter.remove(
                         DeviceMessage.fromNearbyMessage(message).getMessageBody());
+                tryPauseOnMessageRetrived();
             }
         };
 
@@ -247,6 +254,18 @@ public class NearbyMessageActivity extends AppCompatActivity implements GoogleAp
             subscribe();
         }
     }
+
+    public void tryPlaybackOnMessageRetrived() {
+        MediaControllerCompat.TransportControls controls = MediaControllerCompat.getMediaController(this).getTransportControls();
+        controls.play();
+    }
+
+    public void tryPauseOnMessageRetrived() {
+        MediaControllerCompat.TransportControls controls = MediaControllerCompat.getMediaController(this).getTransportControls();
+        controls.pause();
+    }
+
+
 
     /**
      * Subscribes to messages from nearby devices and updates the UI if the subscription either
@@ -344,7 +363,7 @@ public class NearbyMessageActivity extends AppCompatActivity implements GoogleAp
      */
     private void logAndShowSnackbar(final String text) {
         Log.w(TAG, text);
-        View container = findViewById(R.id.activity_main_container);
+        View container = findViewById(R.id.drawer_layout);
         if (container != null) {
             Snackbar.make(container, text, Snackbar.LENGTH_LONG).show();
         }
