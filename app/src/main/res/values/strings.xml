@@ -50,4 +50,6 @@
     <string name="browse_all_subtitle">All songs</string>
     <string name="discover_nearby_devices">Discover nearby devices</string>
     <string name="share_device_information">Share device information</string>
+    <string name="drawer_chat_title">Chat</string>
+    <string name="service_id">rocks.stalin.android.app</string>
 </resources>

@@ -126,7 +126,7 @@ public class PlaybackManager implements Playback.Callback {
         if (error != null) {
             // Error states are really only supposed to be used for errors that cause playback to
             // stop unexpectedly and persist until the user takes action to fix it.
-            stateBuilder.setErrorMessage(PlaybackStateCompat.ERROR_CODE_UNKNOWN_ERROR, error);
+            stateBuilder.setErrorMessage(error);
             state = PlaybackStateCompat.STATE_ERROR;
         }
         //noinspection ResourceType
@@ -280,10 +280,7 @@ public class PlaybackManager implements Playback.Callback {
         @Override
         public void onSeekTo(long position) {
             LogHelper.d(TAG, "onSeekTo:", position);
-            long t1 = System.nanoTime();
             mPlayback.seekTo((int) position);
-            long t2 = System.nanoTime();
-            LogHelper.i(TAG, "seekTook:", t2 - t1);
         }
 
         @Override

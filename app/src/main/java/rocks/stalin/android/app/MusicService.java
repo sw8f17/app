@@ -127,6 +127,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
     private SessionManagerListener<CastSession> mCastSessionManagerListener;
 
 
+
     /*
      * (non-Javadoc)
      * @see android.app.Service#onCreate()

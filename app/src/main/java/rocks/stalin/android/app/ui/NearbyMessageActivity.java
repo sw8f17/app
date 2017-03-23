@@ -116,6 +116,19 @@ public class NearbyMessageActivity extends AppCompatActivity implements GoogleAp
     private ArrayAdapter<String> mNearbyDevicesArrayAdapter;
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (mGoogleApiClient != null && mGoogleApiClient.isConnected())
+            mGoogleApiClient.disconnect();
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.nearby_message);

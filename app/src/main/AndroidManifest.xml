@@ -37,10 +37,15 @@
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
 
-        <!-- Infor to use the nearby message api -->
+
+        <!-- Required for Nearby Connections API -->
+        <meta-data android:name="com.google.android.gms.nearby.connection.SERVICE_ID"
+            android:value="@string/service_id" />
+
+        <!-- Info to use the nearby message api -->
         <meta-data
-            android:name="rocks.stalin.android.app.AIzaSyC-aAEIFlGz-qp4O7hGh55grUeA6FeLkgY"
-            android:value="381635483141-drksaq3hfnfs723odtpl3q2ctl1ki73f.apps.googleusercontent.com" />
+            android:name="com.google.android.nearby.messages.API_KEY"
+            android:value="AIzaSyC-aAEIFlGz-qp4O7hGh55grUeA6FeLkgY" />
 
         <!-- Main activity for music browsing on phone -->
         <activity
@@ -112,6 +117,15 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
+
+
+        <activity android:name=".ui.NearbyMessageActivity">
+            <intent-filter>
+                <!-- <action android:name="android.intent.action.MAIN" /> -->
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
     </application>
 

@@ -321,7 +321,7 @@ public class CastPlayback implements Playback {
         }
     }
 
-    private abstract class CastMediaClientListener implements RemoteMediaClient.Listener {
+    private class CastMediaClientListener implements RemoteMediaClient.Listener {
 
         @Override
         public void onMetadataUpdated() {
@@ -340,15 +340,15 @@ public class CastPlayback implements Playback {
         }
 
         @Override
-        public void onAdBreakStatusUpdated() {
-        }
-
-        @Override
         public void onQueueStatusUpdated() {
         }
 
         @Override
         public void onPreloadStatusUpdated() {
+        }
+
+        @Override
+        public void onAdBreakStatusUpdated() {
         }
     }
 }
