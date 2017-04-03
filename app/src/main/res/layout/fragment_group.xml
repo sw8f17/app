@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:padding="@dimen/group_padding">
+    android:padding="16dp"
+    android:clickable="true"
+    android:foreground="?android:attr/selectableItemBackground">
     <ImageView
         android:id="@+id/album_art"
-        tools:src="@drawable/ic_launcher"
+        android:src="@drawable/ic_launcher"
         android:layout_width="@dimen/group_logo_size"
         android:layout_height="@dimen/group_logo_size"
         android:scaleType="centerCrop"
@@ -22,7 +25,7 @@
         android:layout_toStartOf="@+id/play_pause"
         android:layout_centerVertical="true">
         <TextView
-            android:id="@+id/title"
+            android:id="@+id/group_name"
             tools:text="The Best Music EVAH1111 THE BEST"
             android:ellipsize="end"
             android:maxLines="1"
