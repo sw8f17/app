@@ -21,6 +21,9 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.wifi.p2p.WifiP2pManager;
+import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
+import android.net.wifi.p2p.nsd.WifiP2pServiceInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -38,6 +41,7 @@ import android.support.v7.media.MediaRouter;
 
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
+import rocks.stalin.android.app.network.ServerListenerManager;
 import rocks.stalin.android.app.playback.CastPlayback;
 import rocks.stalin.android.app.playback.LocalPlayback;
 import rocks.stalin.android.app.playback.Playback;
@@ -51,9 +55,13 @@ import com.google.android.gms.cast.framework.CastSession;
 import com.google.android.gms.cast.framework.SessionManager;
 import com.google.android.gms.cast.framework.SessionManagerListener;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_EMPTY_ROOT;
 import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_ROOT;
@@ -114,6 +122,14 @@ public class MusicService extends MediaBrowserServiceCompat implements
     // A value of a CMD_NAME key that indicates that the music playback should switch
     // to local playback from cast playback.
     public static final String CMD_STOP_CASTING = "CMD_STOP_CASTING";
+
+    public static final String MODE_NAME = "MODE_NAME";
+    public static final String MODE_SERVER = "MODE_SERVER";
+    public static final String MODE_CLIENT = "MODE_SERVER";
+
+    public static final String CLIENT_HOST_NAME = "CLIENT_HOST_NAME";
+    public static final String CLIENT_HOST_PORT = "CLIENT_HOST_PORT";
+
     // Delay stopSelf by using a handler.
     private static final int STOP_DELAY = 30000;
 
@@ -229,11 +245,45 @@ public class MusicService extends MediaBrowserServiceCompat implements
                 // Try to handle the intent as a media button event wrapped by MediaButtonReceiver
                 MediaButtonReceiver.handleIntent(mSession, startIntent);
             }
+            WifiP2pManager manager = getSystemService(WifiP2pManager.class);
+            //TODO: WAHT THE FUCK IS A CHANNEL LISTENER
+            WifiP2pManager.Channel channel = manager.initialize(this, getMainLooper(), null);
+            String mode = startIntent.getStringExtra(MODE_NAME);
+            if (mode.equals(MODE_SERVER)) {
+                //Start the network listener
+                Map<String, String> record = new HashMap<String, String>();
+                record.put("Test", "Sure");
+                //TODO: _presence.who?
+                WifiP2pDnsSdServiceInfo test = WifiP2pDnsSdServiceInfo.newInstance("_test", "_presence._tcp", record);
+                manager.addLocalService(channel, test, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        LogHelper.e(TAG, "Not an error");
+                    }
+
+                    @Override
+                    public void onFailure(int i) {
+                        LogHelper.e(TAG, "Actually an error");
+                    }
+                });
+            } else if (mode.equals(MODE_CLIENT)) {
+                String hostname = startIntent.getStringExtra(CLIENT_HOST_NAME);
+                int port = startIntent.getIntExtra(CLIENT_HOST_PORT, -1);
+                try {
+                    Socket socket = new Socket(hostname, port);
+                    LogHelper.e(TAG, "DATA: ", socket.getInputStream().read());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                throw new RuntimeException("Unknown mode");
+            }
         }
         // Reset the delay handler to enqueue a message to stop the service if
         // nothing is playing.
         mDelayedStopHandler.removeCallbacksAndMessages(null);
         mDelayedStopHandler.sendEmptyMessageDelayed(0, STOP_DELAY);
+
         return START_STICKY;
     }
 
@@ -311,7 +361,9 @@ public class MusicService extends MediaBrowserServiceCompat implements
         // The service needs to continue running even after the bound client (usually a
         // MediaController) disconnects, otherwise the music playback will stop.
         // Calling startService(Intent) will keep the service running until it is explicitly killed.
-        startService(new Intent(getApplicationContext(), MusicService.class));
+        Intent i = new Intent(getApplicationContext(), MusicService.class);
+        i.putExtra(MusicService.MODE_NAME, MusicService.MODE_SERVER);
+        startService(i);
     }
 
 
