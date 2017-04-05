@@ -16,15 +16,18 @@
 
 package rocks.stalin.android.app;
 
+import android.Manifest;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.RemoteException;
 import android.support.annotation.NonNull;
 
+import android.support.v4.content.ContextCompat;
 import android.support.v4.media.MediaBrowserCompat.MediaItem;
 import android.support.v4.media.MediaBrowserServiceCompat;
 import android.support.v4.media.MediaMetadataCompat;
@@ -136,7 +139,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
         super.onCreate();
         LogHelper.d(TAG, "onCreate");
 
-        mMusicProvider = new MusicProvider(new ExternalStorageSource(getContentResolver()));
+        mMusicProvider = new MusicProvider(new ExternalStorageSource(getApplicationContext()));
         //mMusicProvider = new MusicProvider();
         // To make the app more responsive, fetch and cache catalog information now.
         // This can help improve the response time in the method

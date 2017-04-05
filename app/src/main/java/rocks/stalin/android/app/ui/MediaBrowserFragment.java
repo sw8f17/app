@@ -21,6 +21,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -41,6 +42,7 @@ import rocks.stalin.android.app.R;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.MediaIDHelper;
 import rocks.stalin.android.app.utils.NetworkHelper;
+import rocks.stalin.android.app.utils.PermissionHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -275,6 +277,7 @@ public class MediaBrowserFragment extends Fragment {
                 // Finally, if the caller requested to show error, show a generic message:
                 mErrorMessage.setText(R.string.error_loading_media);
                 showError = true;
+                PermissionHelper.requestMissingPermissions(getActivity(), PermissionHelper.SHOULD_RECREATE_ACTIVITY);
             }
         }
         mErrorView.setVisibility(showError ? View.VISIBLE : View.GONE);
