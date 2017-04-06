@@ -204,6 +204,8 @@ public class MusicPlayerActivity extends BaseActivity
                 case PermissionHelper.SHOULD_RECREATE_ACTIVITY:
                     recreate();
                     break;
+                default:
+                    LogHelper.i(TAG, "invalid requestCode " + requestCode);
             }
         }
     }

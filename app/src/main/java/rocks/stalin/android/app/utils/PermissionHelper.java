@@ -18,39 +18,77 @@ package rocks.stalin.android.app.utils;
 
 import android.app.Activity;
 
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 
 import java.util.ArrayList;
 
 /**
- * Generic reusable network methods.
+ * Helper to be used for all things related to permissions.
+ * The activities used when requesting permissions must implement the
+ * onRequestPermissionsResult() method
  */
 public class PermissionHelper {
-    /**
-     * @param context to use to check for network connectivity.
-     * @return true if connected, false otherwise.
-     */
-    public static ArrayList<String> missingPermissions;
+
+    private static ArrayList<String> missingPermissions;
     public static final int SHOULD_RECREATE_ACTIVITY = 1;
 
-    public static void requestMissingPermissions(Activity activity, int permission_req) {
+    public static void requestMissingPermissions(@NonNull Activity activity, @NonNull int permission_req) {
+        /**
+         * Request all permissions in the ArrayList missingPermissions in a given activity
+         *
+         * @param activity to be used for asking for permissions
+         * @param permission_req code to be checked in activity after permisison granting
+         */
         if(missingPermissions != null) {
             ActivityCompat.requestPermissions(activity, missingPermissions.toArray(new String[missingPermissions.size()]), permission_req);
         }
     }
 
-    public static void addMissingPermission(String missing_permission) {
+    public static void requestMissingPermission(@NonNull Activity activity, @NonNull String missing_permission, @NonNull int permission_req) {
+        /**
+         * Request a single permission in a given activity
+         *
+         * @param activity to be used for asking for permissions
+         * @param missing_permission string representing the single permission to be requested
+         * @param permission_req code to be checked in activity after permisison granting
+         */
+        ActivityCompat.requestPermissions(activity, new String[]{missing_permission}, permission_req);
+    }
+
+    public static void addMissingPermission(@NonNull String missing_permission) {
+        /**
+         * Add a missing permission to the static list of missing permissions.
+         *
+         * @param missing_permission android string representing the permission
+         */
         if (missingPermissions == null) {
             missingPermissions = new ArrayList<>();
         }
         missingPermissions.add(missing_permission);
     }
 
-    public static void removeMissingPermission(final String missing_permission) {
+    public static void removeMissingPermission(@NonNull String missing_permission) {
+        /**
+         * Remove all occurrences of a permission from the static list of missing permissions.
+         *
+         * @param missing_permission android string representing the permission
+         */
         for(String p:missingPermissions) {
             if(p.equals(missing_permission)){
                 missingPermissions.remove(p);
             }
         }
+    }
+
+    public static ArrayList<String> getMissingPermissions() {
+        if (missingPermissions == null) {
+            missingPermissions = new ArrayList<>();
+        }
+        return missingPermissions;
+    }
+
+    public static void removeAllMissingPermissions() {
+        missingPermissions.clear();
     }
 }
