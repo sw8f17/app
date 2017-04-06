@@ -18,14 +18,17 @@ package rocks.stalin.android.app.ui;
 import android.app.FragmentTransaction;
 import android.app.SearchManager;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.text.TextUtils;
 
 import rocks.stalin.android.app.R;
 import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.PermissionHelper;
 
 /**
  * Main activity for the music player.
@@ -183,5 +186,27 @@ public class MusicPlayerActivity extends BaseActivity
             mVoiceSearchParams = null;
         }
         getBrowseFragment().onConnected();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if(grantResults.length > 0){
+            for(int i = 0; i < grantResults.length; i++){
+                if(grantResults[i] != PackageManager.PERMISSION_GRANTED){
+                    LogHelper.i(TAG, "Did not get permission " + permissions[i]);
+                    return;
+                } else {
+                    LogHelper.i(TAG, "Got permission " + permissions[i]);
+                    PermissionHelper.removeMissingPermission(permissions[i]);
+                }
+            }
+            switch (requestCode) {
+                case PermissionHelper.SHOULD_RECREATE_ACTIVITY:
+                    recreate();
+                    break;
+                default:
+                    LogHelper.i(TAG, "invalid requestCode " + requestCode);
+            }
+        }
     }
 }
