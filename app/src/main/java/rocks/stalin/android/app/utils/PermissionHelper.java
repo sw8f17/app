@@ -33,47 +33,47 @@ public class PermissionHelper {
     private static ArrayList<String> missingPermissions;
     public static final int SHOULD_RECREATE_ACTIVITY = 1;
 
+    /**
+     * Request all permissions in the ArrayList missingPermissions in a given activity
+     *
+     * @param activity to be used for asking for permissions
+     * @param permission_req code to be checked in activity after permisison granting
+     */
     public static void requestMissingPermissions(@NonNull Activity activity, @NonNull int permission_req) {
-        /**
-         * Request all permissions in the ArrayList missingPermissions in a given activity
-         *
-         * @param activity to be used for asking for permissions
-         * @param permission_req code to be checked in activity after permisison granting
-         */
         if(missingPermissions != null) {
             ActivityCompat.requestPermissions(activity, missingPermissions.toArray(new String[missingPermissions.size()]), permission_req);
         }
     }
 
+    /**
+     * Request a single permission in a given activity
+     *
+     * @param activity to be used for asking for permissions
+     * @param missing_permission string representing the single permission to be requested
+     * @param permission_req code to be checked in activity after permisison granting
+     */
     public static void requestMissingPermission(@NonNull Activity activity, @NonNull String missing_permission, @NonNull int permission_req) {
-        /**
-         * Request a single permission in a given activity
-         *
-         * @param activity to be used for asking for permissions
-         * @param missing_permission string representing the single permission to be requested
-         * @param permission_req code to be checked in activity after permisison granting
-         */
         ActivityCompat.requestPermissions(activity, new String[]{missing_permission}, permission_req);
     }
 
+    /**
+     * Add a missing permission to the static list of missing permissions.
+     *
+     * @param missing_permission android string representing the permission
+     */
     public static void addMissingPermission(@NonNull String missing_permission) {
-        /**
-         * Add a missing permission to the static list of missing permissions.
-         *
-         * @param missing_permission android string representing the permission
-         */
         if (missingPermissions == null) {
             missingPermissions = new ArrayList<>();
         }
         missingPermissions.add(missing_permission);
     }
 
+    /**
+     * Remove all occurrences of a permission from the static list of missing permissions.
+     *
+     * @param missing_permission android string representing the permission
+     */
     public static void removeMissingPermission(@NonNull String missing_permission) {
-        /**
-         * Remove all occurrences of a permission from the static list of missing permissions.
-         *
-         * @param missing_permission android string representing the permission
-         */
         for(String p:missingPermissions) {
             if(p.equals(missing_permission)){
                 missingPermissions.remove(p);
