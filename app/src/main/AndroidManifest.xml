@@ -90,6 +90,16 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name=".NetworkService"
+            android:exported="false">
+        </service>
+
+        <service
+            android:name=".ClientMusicService"
+            android:exported="false">
+        </service>
+
         <!--
              (REQUIRED) use this meta data to to declare the app OptionsProvider.
         -->

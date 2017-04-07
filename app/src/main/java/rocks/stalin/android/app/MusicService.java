@@ -18,14 +18,15 @@ package rocks.stalin.android.app;
 
 import android.Manifest;
 import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.net.wifi.p2p.WifiP2pManager;
-import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
-import android.net.wifi.p2p.nsd.WifiP2pServiceInfo;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
 import android.support.annotation.NonNull;
@@ -41,7 +42,7 @@ import android.support.v7.media.MediaRouter;
 
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
-import rocks.stalin.android.app.network.ServerListenerManager;
+import rocks.stalin.android.app.network.StreamerNetworkService;
 import rocks.stalin.android.app.playback.CastPlayback;
 import rocks.stalin.android.app.playback.LocalPlayback;
 import rocks.stalin.android.app.playback.Playback;
@@ -59,10 +60,14 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
+import static android.R.attr.mode;
+import static rocks.stalin.android.app.NetworkService.CLIENT_HOST_NAME;
+import static rocks.stalin.android.app.NetworkService.CLIENT_PORT_NAME;
+import static rocks.stalin.android.app.NetworkService.MODE_CLIENT;
+import static rocks.stalin.android.app.NetworkService.MODE_NAME;
+import static rocks.stalin.android.app.NetworkService.MODE_SERVER;
 import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_EMPTY_ROOT;
 import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_ROOT;
 
@@ -123,13 +128,6 @@ public class MusicService extends MediaBrowserServiceCompat implements
     // to local playback from cast playback.
     public static final String CMD_STOP_CASTING = "CMD_STOP_CASTING";
 
-    public static final String MODE_NAME = "MODE_NAME";
-    public static final String MODE_SERVER = "MODE_SERVER";
-    public static final String MODE_CLIENT = "MODE_SERVER";
-
-    public static final String CLIENT_HOST_NAME = "CLIENT_HOST_NAME";
-    public static final String CLIENT_HOST_PORT = "CLIENT_HOST_PORT";
-
     // Delay stopSelf by using a handler.
     private static final int STOP_DELAY = 30000;
 
@@ -145,6 +143,9 @@ public class MusicService extends MediaBrowserServiceCompat implements
     private SessionManager mCastSessionManager;
     private SessionManagerListener<CastSession> mCastSessionManagerListener;
 
+    private NetworkService networkService;
+    private boolean hasNetworkService;
+    private boolean networkServiceStarted;
 
     /*
      * (non-Javadoc)
@@ -226,6 +227,55 @@ public class MusicService extends MediaBrowserServiceCompat implements
         mMediaRouter = MediaRouter.getInstance(getApplicationContext());
     }
 
+    private abstract class NetworkServiceAction {
+        public abstract void run(NetworkService service);
+    }
+
+    private class NetworkServiceStartServerAction extends NetworkServiceAction{
+        public void run(NetworkService service) {
+            service.startServer();
+        }
+    }
+
+    private class NetworkServiceStartClientAction extends NetworkServiceAction{
+        private final String hostname;
+        private final int port;
+
+        private NetworkServiceStartClientAction(String hostname, int port) {
+            this.hostname = hostname;
+            this.port = port;
+        }
+
+        public void run(NetworkService service) {
+            service.startClient(hostname, port);
+        }
+    }
+
+    private class NetworkServiceConnection implements ServiceConnection {
+
+        private NetworkServiceAction action;
+
+        public NetworkServiceConnection(NetworkServiceAction action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+            NetworkService.LocalBinder binder = (NetworkService.LocalBinder) iBinder;
+            action.run(binder.getService());
+            networkService = binder.getService();
+            hasNetworkService = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            networkService = null;
+            hasNetworkService = false;
+        }
+    }
+
+    private ServiceConnection connection;
+
     /**
      * (non-Javadoc)
      * @see android.app.Service#onStartCommand(android.content.Intent, int, int)
@@ -245,38 +295,22 @@ public class MusicService extends MediaBrowserServiceCompat implements
                 // Try to handle the intent as a media button event wrapped by MediaButtonReceiver
                 MediaButtonReceiver.handleIntent(mSession, startIntent);
             }
-            WifiP2pManager manager = getSystemService(WifiP2pManager.class);
-            //TODO: WAHT THE FUCK IS A CHANNEL LISTENER
-            WifiP2pManager.Channel channel = manager.initialize(this, getMainLooper(), null);
             String mode = startIntent.getStringExtra(MODE_NAME);
-            if (mode.equals(MODE_SERVER)) {
-                //Start the network listener
-                Map<String, String> record = new HashMap<String, String>();
-                record.put("Test", "Sure");
-                //TODO: _presence.who?
-                WifiP2pDnsSdServiceInfo test = WifiP2pDnsSdServiceInfo.newInstance("_test", "_presence._tcp", record);
-                manager.addLocalService(channel, test, new WifiP2pManager.ActionListener() {
-                    @Override
-                    public void onSuccess() {
-                        LogHelper.e(TAG, "Not an error");
-                    }
-
-                    @Override
-                    public void onFailure(int i) {
-                        LogHelper.e(TAG, "Actually an error");
-                    }
-                });
-            } else if (mode.equals(MODE_CLIENT)) {
-                String hostname = startIntent.getStringExtra(CLIENT_HOST_NAME);
-                int port = startIntent.getIntExtra(CLIENT_HOST_PORT, -1);
-                try {
-                    Socket socket = new Socket(hostname, port);
-                    LogHelper.e(TAG, "DATA: ", socket.getInputStream().read());
-                } catch (IOException e) {
-                    e.printStackTrace();
+            if (!networkServiceStarted) {
+                Intent i = new Intent(this, NetworkService.class);
+                NetworkServiceAction networkAction;
+                if (mode.equals(MODE_SERVER)) {
+                    networkAction = new NetworkServiceStartServerAction();
+                } else if (mode.equals(MODE_CLIENT)) {
+                    String hostname = startIntent.getStringExtra(CLIENT_HOST_NAME);
+                    int port = startIntent.getIntExtra(CLIENT_PORT_NAME, -1);
+                    networkAction = new NetworkServiceStartClientAction(hostname, port);
+                } else {
+                    throw new RuntimeException("Unknown mode");
                 }
-            } else {
-                throw new RuntimeException("Unknown mode");
+                connection = new NetworkServiceConnection(networkAction);
+                networkServiceStarted = true;
+                bindService(i, connection, Context.BIND_AUTO_CREATE);
             }
         }
         // Reset the delay handler to enqueue a message to stop the service if
@@ -362,7 +396,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
         // MediaController) disconnects, otherwise the music playback will stop.
         // Calling startService(Intent) will keep the service running until it is explicitly killed.
         Intent i = new Intent(getApplicationContext(), MusicService.class);
-        i.putExtra(MusicService.MODE_NAME, MusicService.MODE_SERVER);
+        i.putExtra(MODE_NAME, MODE_SERVER);
         startService(i);
     }
 

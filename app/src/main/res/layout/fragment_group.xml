@@ -34,15 +34,16 @@
             android:contentDescription="@string/currently_playing_song"
             android:textAppearance="?android:attr/textAppearanceMedium"
             android:textColor="?android:attr/textColorPrimary"/>
+
         <TextView
-            android:id="@+id/artist"
-            tools:text="John Doe and Band"
-            android:ellipsize="end"
-            android:maxLines="1"
+            android:id="@+id/id"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:contentDescription="@string/currently_playing_artist"
-            android:textAppearance="?android:attr/textAppearanceSmall"/>
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            tools:text="John Doe and Band" />
         <TextView
             android:id="@+id/extra_info"
             tools:text="casting to MyCast"
