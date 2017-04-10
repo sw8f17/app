@@ -10,10 +10,7 @@ import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.os.Build;
 import android.widget.Toast;
 
-import com.squareup.wire.Message;
-
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
@@ -65,16 +62,16 @@ public class StreamerNetworkService {
         try {
             socketManager.start(8009, new ServerListenerManager.ClientListener() {
                 @Override
-                public void connected(Socket socket) {
+                public void connected(MessageConnection connection) {
                     Welcome packet = new Welcome.Builder()
                             .song_name("Darude - Sandstorm")
                             .build();
+                    Welcome packet2 = new Welcome.Builder()
+                            .song_name("Darude - Dankstorm")
+                            .build();
                     try {
-                        byte[] packetData = Welcome.ADAPTER.encode(packet);
-                        OutputStream stream = socket.getOutputStream();
-                        stream.write(packetData);
-                        stream.flush();
-                        stream.close();
+                        connection.send(packet, Welcome.class);
+                        connection.send(packet2, Welcome.class);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -172,8 +169,14 @@ public class StreamerNetworkService {
                             public void run() {
                                 try {
                                     Socket socket = new Socket(wifiP2pInfo.groupOwnerAddress, port);
-                                    Welcome packet = Welcome.ADAPTER.decode(socket.getInputStream());
-                                    LogHelper.e(TAG, "DATA: ", packet.song_name);
+                                    MessageConnection connection = new MessageConnection(socket);
+                                    connection.start();
+                                    connection.addHandler(Welcome.class, new MessageConnection.MessageListener<Welcome, Welcome.Builder>() {
+                                        @Override
+                                        public void packetReceived(Welcome message) {
+                                            LogHelper.e(TAG, "DATA: ", message.song_name);
+                                        }
+                                    });
                                 } catch (IOException e) {
                                     e.printStackTrace();
                                 }

@@ -16,13 +16,15 @@ import rocks.stalin.android.app.proto.Welcome;
  */
 
 public class MessageRegistry {
-    private static final MessageRegistry INSTANCE = new MessageRegistry();
+    private static MessageRegistry INSTANCE = null;
 
     public static MessageRegistry getInstance() {
+        if(INSTANCE == null)
+            INSTANCE = new MessageRegistry();
         return INSTANCE;
     }
 
-    private static Map<Class<? extends Message>, Integer> messages = new HashMap();
+    private static Map<Class<? extends Message>, Integer> messages = new HashMap<>();
 
     //Add messages here
     private MessageRegistry() {
