@@ -1,18 +1,16 @@
 package rocks.stalin.android.app.network;
 
+import android.util.SparseArray;
+
 import com.squareup.wire.Message;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.Map;
 
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
-
-import static android.R.id.message;
 
 public class MessageConnection {
     private static final String TAG = LogHelper.makeLogTag(MessageConnection.class);
@@ -21,7 +19,7 @@ public class MessageConnection {
     private boolean running;
     private Thread processThread;
 
-    private Map<Integer, MessageListener> handlers = new HashMap<>();
+    private SparseArray<MessageListener> handlers = new SparseArray<>();
 
     public MessageConnection(Socket socket) {
         this.socket = socket;
@@ -38,8 +36,8 @@ public class MessageConnection {
                         int type = stream.read();
                         int length = stream.read();
                         byte[] data = new byte[length];
-                        stream.read(data, 0, length);
-                        LogHelper.d(TAG, "Message retrieved");
+                        int readBytes = stream.read(data, 0, length);
+                        LogHelper.d(TAG, "Message retrieved, bytes read: ", readBytes);
 
                         processMessage(type, data);
                     } catch (IOException e) {
@@ -69,6 +67,9 @@ public class MessageConnection {
                 handler = handlers.get(type);
         }
         if(handler != null && message != null) {
+            /**
+             * This is unsafe, since it's deserializing the network data.
+             */
             handler.packetReceived(message);
         }
     }

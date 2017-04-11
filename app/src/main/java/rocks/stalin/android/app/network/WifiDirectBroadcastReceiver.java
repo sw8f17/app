@@ -7,11 +7,8 @@ import android.net.NetworkInfo;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
-import android.telecom.Connection;
 
 import rocks.stalin.android.app.utils.LogHelper;
-
-import static android.R.attr.action;
 
 public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
     private final WifiP2pManager manager;
