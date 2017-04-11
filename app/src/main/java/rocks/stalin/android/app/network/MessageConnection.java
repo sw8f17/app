@@ -10,14 +10,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 import rocks.stalin.android.app.proto.Welcome;
+import rocks.stalin.android.app.utils.LogHelper;
 
 import static android.R.id.message;
 
-/**
- * Created by delusional on 4/10/17.
- */
-
 public class MessageConnection {
+    private static final String TAG = LogHelper.makeLogTag(MessageConnection.class);
 
     private Socket socket;
     private boolean running;
@@ -41,6 +39,7 @@ public class MessageConnection {
                         int length = stream.read();
                         byte[] data = new byte[length];
                         stream.read(data, 0, length);
+                        LogHelper.d(TAG, "Message retrieved");
 
                         processMessage(type, data);
                     } catch (IOException e) {
@@ -69,8 +68,9 @@ public class MessageConnection {
                 message = Welcome.ADAPTER.decode(data);
                 handler = handlers.get(type);
         }
-        if(handler != null && message != null)
+        if(handler != null && message != null) {
             handler.packetReceived(message);
+        }
     }
 
     public <M extends Message<M, B>, B extends Message.Builder<M, B>> void send(M packet, Class<M> clazz) throws IOException {
@@ -82,6 +82,7 @@ public class MessageConnection {
     }
 
     public interface MessageListener<M extends Message<M, B>, B extends Message.Builder<M, B>> {
+        @SuppressWarnings("deserialize")
         void packetReceived(M message);
     }
 }

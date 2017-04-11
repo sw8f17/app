@@ -21,10 +21,6 @@ import rocks.stalin.android.app.utils.LogHelper;
 
 import static android.os.Looper.getMainLooper;
 
-/**
- * Created by delusional on 4/5/17.
- */
-
 public class StreamerNetworkService {
     private static final String TAG = LogHelper.makeLogTag(StreamerNetworkService.class);
 

@@ -6,9 +6,6 @@ import java.util.LinkedHashMap;
 
 import rocks.stalin.android.app.utils.LogHelper;
 
-/**
- * Created by delusional on 4/4/17.
- */
 
 public class ServerListenerManager {
     private static final String TAG = LogHelper.makeLogTag(ServerListenerManager.class);

@@ -16,22 +16,17 @@
 
 package rocks.stalin.android.app;
 
-import android.Manifest;
 import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.pm.PackageManager;
-import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
 import android.support.annotation.NonNull;
-
-import android.support.v4.content.ContextCompat;
 import android.support.v4.media.MediaBrowserCompat.MediaItem;
 import android.support.v4.media.MediaBrowserServiceCompat;
 import android.support.v4.media.MediaMetadataCompat;
@@ -40,9 +35,17 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.media.MediaRouter;
 
+import com.google.android.gms.cast.framework.CastContext;
+import com.google.android.gms.cast.framework.CastSession;
+import com.google.android.gms.cast.framework.SessionManager;
+import com.google.android.gms.cast.framework.SessionManagerListener;
+
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
+
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
-import rocks.stalin.android.app.network.StreamerNetworkService;
 import rocks.stalin.android.app.playback.CastPlayback;
 import rocks.stalin.android.app.playback.LocalPlayback;
 import rocks.stalin.android.app.playback.Playback;
@@ -51,18 +54,6 @@ import rocks.stalin.android.app.playback.QueueManager;
 import rocks.stalin.android.app.ui.NowPlayingActivity;
 import rocks.stalin.android.app.utils.LogHelper;
 
-import com.google.android.gms.cast.framework.CastContext;
-import com.google.android.gms.cast.framework.CastSession;
-import com.google.android.gms.cast.framework.SessionManager;
-import com.google.android.gms.cast.framework.SessionManagerListener;
-
-import java.io.IOException;
-import java.lang.ref.WeakReference;
-import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
-
-import static android.R.attr.mode;
 import static rocks.stalin.android.app.NetworkService.CLIENT_HOST_NAME;
 import static rocks.stalin.android.app.NetworkService.CLIENT_PORT_NAME;
 import static rocks.stalin.android.app.NetworkService.MODE_CLIENT;

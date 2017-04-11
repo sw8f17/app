@@ -13,10 +13,6 @@ import rocks.stalin.android.app.utils.LogHelper;
 
 import static android.R.attr.action;
 
-/**
- * Created by delusional on 4/5/17.
- */
-
 public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
     private final WifiP2pManager manager;
     private final WifiP2pManager.Channel channel;

@@ -48,4 +48,7 @@
     <string name="media_route_menu_title">Play on…</string>
     <string name="browse_all">All</string>
     <string name="browse_all_subtitle">All songs</string>
+    <string name="server">Server</string>
+    <string name="client">Client</string>
+    <string name="select_mode">Select Mode</string>
 </resources>

@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
     <LinearLayout
         android:layout_width="match_parent" android:layout_height="match_parent"
         android:orientation="vertical">
 
         <Button
-            android:text="Server"
+            android:text="@string/server"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:id="@+id/select_mode_server"
             android:layout_weight="1" />
 
         <Button
-            android:text="Client"
+            android:text="@string/client"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:id="@+id/select_mode_client"
@@ -28,14 +28,13 @@
             android:layout_width="250dp"
             android:layout_height="250dp"
             android:id="@+id/select_mode_client1"
-            android:layout_weight="1"
             android:layout_centerVertical="true"
             android:layout_centerHorizontal="true"
             android:background="@drawable/middle_notify"
-            android:text="Select Mode"
+            android:text="@string/select_mode"
             android:clickable="true"
             android:textStyle="bold"
-            android:textSize="25dp"
+            android:textSize="25sp"
             android:textColor="#FF2D2D2D"
             android:textAllCaps="true"
             android:gravity="center" />
