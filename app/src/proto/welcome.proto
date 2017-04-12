@@ -1,0 +1,10 @@
+syntax = "proto2";
+
+package rocks.stalin.scotty;
+
+option java_package = "rocks.stalin.android.app.proto";
+
+message Welcome {
+  // Name of the playing song
+  required string song_name = 1;
+}

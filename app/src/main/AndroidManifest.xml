@@ -23,6 +23,8 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:required="true" android:name="android.permission.CHANGE_WIFI_STATE"/>
+
 
     <application
         android:allowBackup="true"
@@ -37,9 +39,7 @@
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
 
-        <!-- Main activity for music browsing on phone -->
-        <activity
-            android:name=".ui.MusicPlayerActivity"
+        <activity android:name=".ui.SelectModeActivity"
             android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -51,6 +51,17 @@
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ui.SelectGroupActivity"
+            android:label="@string/app_name">
+        </activity>
+
+        <!-- Main activity for music browsing on phone -->
+        <activity
+            android:name=".ui.MusicPlayerActivity"
+            android:label="@string/app_name">
         </activity>
 
         <!-- Placeholder activity for phone UI -->
@@ -77,6 +88,16 @@
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
+        </service>
+
+        <service
+            android:name=".NetworkService"
+            android:exported="false">
+        </service>
+
+        <service
+            android:name=".ClientMusicService"
+            android:exported="false">
         </service>
 
         <!--

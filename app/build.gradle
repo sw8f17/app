@@ -1,5 +1,17 @@
 apply plugin: 'com.android.application'
 
+def protoPath = 'src/proto'
+def wireGeneratedPath = 'build/generated/source/wire'
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.squareup.wire:wire-compiler:2.2.0'
+    }
+}
+
 android {
     compileSdkVersion 25
     buildToolsVersion '25.0.2'
@@ -10,9 +22,11 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-        externalNativeBuild {
-            cmake {
-                cppFlags ""
+    }
+    sourceSets {
+        main {
+            java {
+                srcDir wireGeneratedPath
             }
         }
     }
@@ -21,13 +35,18 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
-    }
-    externalNativeBuild {
-        cmake {
-            path "CMakeLists.txt"
+        debug {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    lintOptions {
+        disable 'InvalidPackage'
+    }
 }
+
+println "Sources : " + android.sourceSets.main.java
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
@@ -40,6 +59,7 @@ dependencies {
     compile 'com.android.support:cardview-v7:25.3.0'
     compile 'com.android.support:mediarouter-v7:25.3.0'
     compile 'com.android.support:design:25.3.0'
+    compile 'com.squareup.wire:wire-runtime:2.2.0'
     testCompile 'junit:junit:4.12'
 }
 
@@ -62,3 +82,20 @@ project.gradle.taskGraph.whenReady {
 		ignoreFailures = true
 	}
 }
+
+// This handles the protocol buffer generation with wire
+task generateWireClasses {
+    description = 'Generate Java classes from protocol buffer (.proto) schema files for use with squareup\'s wire library'
+    delete(wireGeneratedPath)
+    fileTree(dir: protoPath, include: '**/*.proto').each { File file ->
+        doLast {
+            javaexec {
+                main = 'com.squareup.wire.WireCompiler'
+                classpath = buildscript.configurations.classpath
+                args = ["--proto_path=${protoPath}", "--java_out=${wireGeneratedPath}", "${file}"]
+            }
+        }
+    }
+}
+
+preBuild.dependsOn generateWireClasses

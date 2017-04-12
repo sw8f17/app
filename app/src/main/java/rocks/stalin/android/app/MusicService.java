@@ -16,18 +16,17 @@
 
 package rocks.stalin.android.app;
 
-import android.Manifest;
 import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
+import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
 import android.support.annotation.NonNull;
-
-import android.support.v4.content.ContextCompat;
 import android.support.v4.media.MediaBrowserCompat.MediaItem;
 import android.support.v4.media.MediaBrowserServiceCompat;
 import android.support.v4.media.MediaMetadataCompat;
@@ -35,6 +34,15 @@ import android.support.v4.media.session.MediaButtonReceiver;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.media.MediaRouter;
+
+import com.google.android.gms.cast.framework.CastContext;
+import com.google.android.gms.cast.framework.CastSession;
+import com.google.android.gms.cast.framework.SessionManager;
+import com.google.android.gms.cast.framework.SessionManagerListener;
+
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
 
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
@@ -46,15 +54,11 @@ import rocks.stalin.android.app.playback.QueueManager;
 import rocks.stalin.android.app.ui.NowPlayingActivity;
 import rocks.stalin.android.app.utils.LogHelper;
 
-import com.google.android.gms.cast.framework.CastContext;
-import com.google.android.gms.cast.framework.CastSession;
-import com.google.android.gms.cast.framework.SessionManager;
-import com.google.android.gms.cast.framework.SessionManagerListener;
-
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.List;
-
+import static rocks.stalin.android.app.NetworkService.CLIENT_HOST_NAME;
+import static rocks.stalin.android.app.NetworkService.CLIENT_PORT_NAME;
+import static rocks.stalin.android.app.NetworkService.MODE_CLIENT;
+import static rocks.stalin.android.app.NetworkService.MODE_NAME;
+import static rocks.stalin.android.app.NetworkService.MODE_SERVER;
 import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_EMPTY_ROOT;
 import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_ROOT;
 
@@ -114,6 +118,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
     // A value of a CMD_NAME key that indicates that the music playback should switch
     // to local playback from cast playback.
     public static final String CMD_STOP_CASTING = "CMD_STOP_CASTING";
+
     // Delay stopSelf by using a handler.
     private static final int STOP_DELAY = 30000;
 
@@ -129,6 +134,9 @@ public class MusicService extends MediaBrowserServiceCompat implements
     private SessionManager mCastSessionManager;
     private SessionManagerListener<CastSession> mCastSessionManagerListener;
 
+    private NetworkService networkService;
+    private boolean hasNetworkService;
+    private boolean networkServiceStarted;
 
     /*
      * (non-Javadoc)
@@ -210,6 +218,55 @@ public class MusicService extends MediaBrowserServiceCompat implements
         mMediaRouter = MediaRouter.getInstance(getApplicationContext());
     }
 
+    private abstract class NetworkServiceAction {
+        public abstract void run(NetworkService service);
+    }
+
+    private class NetworkServiceStartServerAction extends NetworkServiceAction{
+        public void run(NetworkService service) {
+            service.startServer();
+        }
+    }
+
+    private class NetworkServiceStartClientAction extends NetworkServiceAction{
+        private final String hostname;
+        private final int port;
+
+        private NetworkServiceStartClientAction(String hostname, int port) {
+            this.hostname = hostname;
+            this.port = port;
+        }
+
+        public void run(NetworkService service) {
+            service.startClient(hostname, port);
+        }
+    }
+
+    private class NetworkServiceConnection implements ServiceConnection {
+
+        private NetworkServiceAction action;
+
+        public NetworkServiceConnection(NetworkServiceAction action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+            NetworkService.LocalBinder binder = (NetworkService.LocalBinder) iBinder;
+            action.run(binder.getService());
+            networkService = binder.getService();
+            hasNetworkService = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            networkService = null;
+            hasNetworkService = false;
+        }
+    }
+
+    private ServiceConnection connection;
+
     /**
      * (non-Javadoc)
      * @see android.app.Service#onStartCommand(android.content.Intent, int, int)
@@ -229,11 +286,29 @@ public class MusicService extends MediaBrowserServiceCompat implements
                 // Try to handle the intent as a media button event wrapped by MediaButtonReceiver
                 MediaButtonReceiver.handleIntent(mSession, startIntent);
             }
+            String mode = startIntent.getStringExtra(MODE_NAME);
+            if (!networkServiceStarted) {
+                Intent i = new Intent(this, NetworkService.class);
+                NetworkServiceAction networkAction;
+                if (mode.equals(MODE_SERVER)) {
+                    networkAction = new NetworkServiceStartServerAction();
+                } else if (mode.equals(MODE_CLIENT)) {
+                    String hostname = startIntent.getStringExtra(CLIENT_HOST_NAME);
+                    int port = startIntent.getIntExtra(CLIENT_PORT_NAME, -1);
+                    networkAction = new NetworkServiceStartClientAction(hostname, port);
+                } else {
+                    throw new RuntimeException("Unknown mode");
+                }
+                connection = new NetworkServiceConnection(networkAction);
+                networkServiceStarted = true;
+                bindService(i, connection, Context.BIND_AUTO_CREATE);
+            }
         }
         // Reset the delay handler to enqueue a message to stop the service if
         // nothing is playing.
         mDelayedStopHandler.removeCallbacksAndMessages(null);
         mDelayedStopHandler.sendEmptyMessageDelayed(0, STOP_DELAY);
+
         return START_STICKY;
     }
 
@@ -311,7 +386,9 @@ public class MusicService extends MediaBrowserServiceCompat implements
         // The service needs to continue running even after the bound client (usually a
         // MediaController) disconnects, otherwise the music playback will stop.
         // Calling startService(Intent) will keep the service running until it is explicitly killed.
-        startService(new Intent(getApplicationContext(), MusicService.class));
+        Intent i = new Intent(getApplicationContext(), MusicService.class);
+        i.putExtra(MODE_NAME, MODE_SERVER);
+        startService(i);
     }
 
 

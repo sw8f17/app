@@ -23,4 +23,5 @@
     <color name="fullscreen_line_color">#E5FFFFFF</color>
     <color name="smus_primary">#2b0055</color>
     <color name="smus_primary_dark">#120055</color>
+    <color name="middle_notify_solid">#ff9800</color>
 </resources>

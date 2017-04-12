@@ -32,4 +32,8 @@
     <!-- Margins for full screen activity-->
     <dimen name="text_view_margin">16dp</dimen>
     <dimen name="end_text_margin">16dp</dimen>
+
+    <!-- Group listview -->
+    <dimen name="group_padding">8dp</dimen>
+    <dimen name="group_logo_size">64dp</dimen>
 </resources>
