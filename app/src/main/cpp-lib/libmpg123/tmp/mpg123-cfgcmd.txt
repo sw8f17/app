@@ -1,1 +1,0 @@
-cmd='/home/delusional/Documents/P8/app/app/src/main/cpp-dep/mpg123/configure;--prefix=/home/delusional/Documents/P8/app/app/src/main/cpp-lib/libmpg123'
