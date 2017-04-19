@@ -31,6 +31,10 @@ public class ClientMusicService extends Service {
     private String hostname;
     private int port;
     private ServiceConnection conn = new ServiceConnection() {
+
+        MP3Decoder decoder = new MP3Decoder();
+        decoder.decode("/sdcard/Download/bensound-house.mp3");
+
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
             LogHelper.i(TAG, "Network service bound");

@@ -10,3 +10,8 @@
 .externalNativeBuild
 
 javadoc/
+
+toolchain/
+
+CMakeCache.txt
+CMakeFiles/
