@@ -78,9 +78,9 @@ afterEvaluate {
 }
 
 project.gradle.taskGraph.whenReady {
-	connectedDebugAndroidTest {
-		ignoreFailures = true
-	}
+    connectedDebugAndroidTest {
+        ignoreFailures = true
+    }
 }
 
 // This handles the protocol buffer generation with wire

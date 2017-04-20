@@ -52,11 +52,7 @@ public class SelectGroupActivity extends AppCompatActivity {
             @Override
             public void select(Group group) {
                 Toast.makeText(SelectGroupActivity.this, "ID: " + group.name, Toast.LENGTH_SHORT).show();
-                Intent i = new Intent(SelectGroupActivity.this, ClientMusicService.class);
-                i.setAction(ClientMusicService.ACTION_CONNECT);
-                i.putExtra(ClientMusicService.CONNECT_HOST_NAME, group.address);
-                i.putExtra(ClientMusicService.CONNECT_PORT_NAME, 8009);
-                startService(i);
+                ClientConnectedActivity.start(SelectGroupActivity.this, group.address);
             }
         });
         rv.setAdapter(adapter);
@@ -84,7 +80,5 @@ public class SelectGroupActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         client.stopDiscovery();
-        Intent i = new Intent(this, ClientMusicService.class);
-        stopService(i);
     }
 }
