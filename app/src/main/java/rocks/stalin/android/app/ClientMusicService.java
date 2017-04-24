@@ -72,10 +72,10 @@ public class ClientMusicService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent.getAction();
         if (action.equals(ACTION_CONNECT)) {
-            LogHelper.v(TAG, "Creating music service");
+            LogHelper.i(TAG, "Creating music service");
 
             Intent i = new Intent(this, ClientNetworkService.class);
-            bindService(i, conn, BIND_AUTO_CREATE);
+            bound = bindService(i, conn, BIND_AUTO_CREATE);
 
             hostname = intent.getStringExtra(CONNECT_HOST_NAME);
             port = intent.getIntExtra(CONNECT_PORT_NAME, -1);

@@ -64,8 +64,10 @@ public class SelectGroupActivity extends AppCompatActivity {
         client.discoverServers(new WifiP2PMessageClient.DiscoverListener() {
             @Override
             public void onServerDiscovered(Group group) {
-                groupList.add(group);
-                adapter.notifyItemInserted(groupList.size()-1);
+                if(!groupList.contains(group)) {
+                    groupList.add(group);
+                    adapter.notifyItemInserted(groupList.size() - 1);
+                }
             }
         });
     }

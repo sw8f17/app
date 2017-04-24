@@ -11,6 +11,7 @@ import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import android.os.Build;
 import android.os.Looper;
+import android.util.Log;
 import android.widget.Toast;
 
 import java.io.IOException;
@@ -93,8 +94,10 @@ public class WifiP2PMessageClient {
     }
 
     public void connect(final Context context, String host, final int port) {
+        LogHelper.i(TAG, "Connecting to " + host + " on port " + port);
         //We don't need to discover when we are connected
         stopDiscovery();
+
 
         WifiDirectBroadcastReceiver rec =
                 new WifiDirectBroadcastReceiver(p2pManager, channel, new WifiP2pManager.ConnectionInfoListener() {
@@ -102,6 +105,8 @@ public class WifiP2PMessageClient {
                     public void onConnectionInfoAvailable(final WifiP2pInfo wifiP2pInfo) {
                         Toast.makeText(context, "Connected to: " + wifiP2pInfo.groupOwnerAddress, Toast.LENGTH_SHORT).show();
                         Toast.makeText(context, "Am i owner?: " + wifiP2pInfo.isGroupOwner, Toast.LENGTH_SHORT).show();
+                        LogHelper.i(TAG, "Connected to " +  wifiP2pInfo.groupOwnerAddress);
+                        LogHelper.i(TAG, "isOwner? " + wifiP2pInfo.isGroupOwner);
                         new Thread() {
                             @Override
                             public void run() {
