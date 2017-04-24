@@ -1,5 +1,6 @@
 package rocks.stalin.android.app.playback;
 
+import rocks.stalin.android.app.MP3MediaInfo;
 import rocks.stalin.android.app.utils.LogHelper;
 
 /**
@@ -10,7 +11,32 @@ class DebugSink implements AudioSink {
     private static final String TAG = LogHelper.makeLogTag(DebugSink.class);
 
     @Override
-    public void play(byte[] frame) {
-        LogHelper.e(TAG, "I'm supposed to play: ", frame.length, " bytes of data");
+    public void play() {
+
+    }
+
+    @Override
+    public void pause() {
+
+    }
+
+    @Override
+    public void stop() {
+
+    }
+
+    @Override
+    public void resume() {
+
+    }
+
+    @Override
+    public void reset() {
+
+    }
+
+    @Override
+    public void change(MP3MediaInfo mediaInfo, PluggableMediaPlayer.MediaBuffer mediaBuffer) {
+
     }
 }

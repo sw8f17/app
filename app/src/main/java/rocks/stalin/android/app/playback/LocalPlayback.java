@@ -460,7 +460,7 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
         LogHelper.d(TAG, "createMediaPlayerIfNeeded. needed? ", (mMediaPlayer==null));
         if (mMediaPlayer == null) {
             PluggableMediaPlayer pluggableMediaPlayer = new PluggableMediaPlayer();
-            pluggableMediaPlayer.plugSink(new DebugSink());
+            pluggableMediaPlayer.plugSink(new LocalSoundSink());
             mMediaPlayer = pluggableMediaPlayer;
 
             // Make sure the media player will acquire a wake-lock while

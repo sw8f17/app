@@ -12,8 +12,10 @@ import android.util.Log;
 import java.io.FileDescriptor;
 import java.io.IOException;
 
+import okio.Sink;
 import rocks.stalin.android.app.MP3Decoder;
 import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.MP3File;
 
 /**
  * Created by delusional on 4/24/17.
@@ -23,7 +25,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
     private static final String TAG = LogHelper.makeLogTag(PluggableMediaPlayer.class);
 
     private MP3Decoder decoder;
-    private long fHandle;
+    private MP3File currentFile;
 
     private PlaybackState state;
 
@@ -33,8 +35,9 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     public PluggableMediaPlayer() {
         decoder = new MP3Decoder();
-        fHandle = 0;
         state = PlaybackState.Stopped;
+        //TODO: Is this a good idea to do here?
+        decoder.init();
     }
 
     @Override
@@ -45,24 +48,22 @@ public class PluggableMediaPlayer implements MediaPlayer {
     //We need to do something clever instead of what the fuck i'm doing now
     @Override
     public void prepareAsync() {
-        //TODO: Maybe make this async?
-        //decoder.init();
         state = PlaybackState.Stopped;
         preparedListener.onPrepared(this);
     }
 
     @Override
     public void reset() {
-        decoder.close(fHandle);
-        fHandle = 0;
+        sink.reset();
+        currentFile.close();
+        currentFile = null;
         state = PlaybackState.Stopped;
     }
 
     @Override
     public void release() {
-        if(fHandle != 0)
-            decoder.close(fHandle);
-        fHandle = 0;
+        sink.reset();
+        currentFile.close();
         decoder.exit();
     }
 
@@ -73,23 +74,19 @@ public class PluggableMediaPlayer implements MediaPlayer {
     @Override
     public void start() {
         LogHelper.e(TAG, "Starting playback");
+        if(state == PlaybackState.Stopped) {
+            sink.play();
+        } else {
+            sink.resume();
+        }
         state = PlaybackState.Playing;
-        Thread worker = new Thread() {
-            @Override
-            public void run() {
-                while(state == PlaybackState.Playing) {
-                    byte[] frame = decoder.decodeFrame(fHandle);
-                    if(frame.length == 0)
-                        pause();
-                    sink.play(frame);
-                }
-            }
-        };
-        worker.start();
+
     }
 
     @Override
     public void pause() {
+        LogHelper.e(TAG, "Pausing playback");
+        sink.pause();
         state = PlaybackState.Paused;
     }
 
@@ -99,7 +96,10 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     @Override
     public void setDataSource(Context mContext, Uri uriSource) throws IOException {
-        fHandle = decoder.setDataSource(mContext, uriSource);
+        currentFile = decoder.open(mContext, uriSource);
+
+        sink.change(currentFile.getMediaInfo(), new MediaBuffer(currentFile));
+        state = PlaybackState.Stopped;
     }
 
     @Override
@@ -140,5 +140,17 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     @Override
     public void setOnSeekCompleteListener(OnSeekCompleteListener listener) {
+    }
+
+    public class MediaBuffer {
+        private MP3File file;
+
+        public MediaBuffer(MP3File file) {
+            this.file = file;
+        }
+
+        public byte[] read() {
+            return file.decodeFrame();
+        }
     }
 }

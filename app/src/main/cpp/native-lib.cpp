@@ -4,16 +4,17 @@
 #include <unistd.h>
 #include <android/log.h>
 
-typedef struct {
-    mpg123_handle* handle;
-    unsigned char* buffer;
-    size_t totalRead;
-    int channels;
-    int encoding;
-    long rate;
-    size_t bufferSize;
-    int fd;
-} File;
+struct fields_t {
+    jclass mp3fileClazz;
+    jmethodID mp3fileCons;
+
+    jclass mp3encodingClazz;
+    jmethodID mp3encodingValueof;
+
+    jclass mp3mediainfoClazz;
+    jmethodID mp3mediainfoCons;
+};
+static fields_t fields;
 
 /*
  * Get a human-readable summary of an exception object.  The buffer will
@@ -66,20 +67,54 @@ static void getExceptionSummary(JNIEnv* env, jthrowable exception, char* buf, si
 }
 
 extern "C" {
-const char *TAG = "JNI-NATIVE";
-
-    /*
-     * Get an int file descriptor from a java.io.FileDescriptor
-     */
-    int jniGetFDFromFileDescriptor(JNIEnv* env, jobject fileDescriptor) {
-        jclass descriptorClass = env->FindClass("java/io/FileDescriptor");
-        jfieldID descriptorID = env->GetFieldID(descriptorClass, "descriptor", "I");
-        return env->GetIntField(fileDescriptor, descriptorID);
-    }
+static const char *TAG = "JNI-NATIVE";
 
     JNIEXPORT void JNICALL
-    Java_rocks_stalin_android_app_MP3Decoder_static_1init(JNIEnv *env, jclass type) {
-        mpg123_init();
+    Java_rocks_stalin_android_app_MP3Decoder_staticInit(JNIEnv *env, jclass type) {
+        fields.mp3fileClazz = (jclass) env->NewGlobalRef(env->FindClass("rocks/stalin/android/app/utils/MP3File"));
+        if(fields.mp3fileClazz == NULL)
+            return;
+
+        fields.mp3fileCons = env->GetMethodID(fields.mp3fileClazz, "<init>", "(JJJILrocks/stalin/android/app/MP3MediaInfo;)V");
+        if(fields.mp3fileCons == NULL)
+            return;
+
+        fields.mp3encodingClazz = (jclass) env->NewGlobalRef(env->FindClass("rocks/stalin/android/app/MP3Encoding"));
+        if(fields.mp3encodingClazz == NULL)
+            return;
+
+        fields.mp3encodingValueof = env->GetStaticMethodID(fields.mp3encodingClazz, "valueOf", "(I)Lrocks/stalin/android/app/MP3Encoding;");
+        if(fields.mp3encodingValueof == NULL)
+            return;
+
+        fields.mp3mediainfoClazz = (jclass) env->NewGlobalRef(env->FindClass("rocks/stalin/android/app/MP3MediaInfo"));
+        if(fields.mp3mediainfoClazz == NULL)
+            return;
+
+        fields.mp3mediainfoCons = env->GetMethodID(fields.mp3mediainfoClazz, "<init>", "(JIJLrocks/stalin/android/app/MP3Encoding;)V");
+        if(fields.mp3mediainfoCons == NULL)
+            return;
+    }
+
+    jobject
+    MP3EncodingCreate(JNIEnv* env, int encoding) {
+        return env->CallStaticObjectMethod(fields.mp3encodingClazz, fields.mp3encodingValueof, (jint) encoding);
+    }
+
+    jobject
+    MP3MediaInfoCreate(JNIEnv* env, long sampleRate, int channels, long bufferSize, int encoding) {
+        jobject encodingObj = MP3EncodingCreate(env, encoding);
+        return env->NewObject(fields.mp3mediainfoClazz, fields.mp3mediainfoCons,
+                              (jlong) sampleRate, (jint) channels, (jlong) bufferSize, encodingObj);
+    }
+
+    jobject
+    MP3FileCreate(JNIEnv *env, mpg123_handle *handle, unsigned char *buffer, size_t bufferSize, int fd, jobject mediaInfo) {
+        __android_log_print(ANDROID_LOG_DEBUG, TAG, "Creating new mp3file: %ld", bufferSize);
+        jobject mp3file = env->NewObject(fields.mp3fileClazz, fields.mp3fileCons,
+                                         (jlong)handle, (jlong)buffer, (jlong)bufferSize, fd,
+                                         mediaInfo);
+        return mp3file;
     }
 
     /*
@@ -121,7 +156,7 @@ const char *TAG = "JNI-NATIVE";
         return result;
     }
 
-JNIEXPORT jstring JNICALL
+    JNIEXPORT jstring JNICALL
     Java_rocks_stalin_android_app_MainActivity_stringFromJNI(JNIEnv *env, jobject) {
         std::string hello = "Hello from C++";
         return env->NewStringUTF(hello.c_str());
@@ -139,95 +174,35 @@ JNIEXPORT jstring JNICALL
         mpg123_exit();
     }
 
-    JNIEXPORT jlong JNICALL
-    Java_rocks_stalin_android_app_MP3Decoder_openFromDataSource(JNIEnv *env, jobject, jobject fileDescriptor, jlong offset, jlong length) {
-        if (fileDescriptor == NULL) {
-            __android_log_print(ANDROID_LOG_ERROR, TAG, "FUCK YOU");
-            jniThrowException(env, "java/lang/IllegalArgumentException", NULL);
-            return 0;
-        }
-
-        int fd = jniGetFDFromFileDescriptor(env, fileDescriptor);
-
-        File *file = (File *) malloc(sizeof(File));
+    JNIEXPORT jobject JNICALL
+    Java_rocks_stalin_android_app_MP3Decoder_openFromDataSource(JNIEnv *env, jobject, jint fd, jlong offset, jlong length) {
         int err;
-        file->handle = mpg123_new(NULL, &err);
+        mpg123_handle* handle = mpg123_new(NULL, &err);
         if (err) {
             __android_log_print(ANDROID_LOG_ERROR, TAG, "Failed creating mpg123: %s", mpg123_plain_strerror(err));
-            return 0;
+            return NULL;
         }
-        file->totalRead = 0;
+        size_t totalRead = 0;
 
-        file->bufferSize = mpg123_outblock(file->handle);
+        size_t bufferSize = mpg123_outblock(handle);
         //I'm choosing to allocate a single buffer per song. This limits our options when it comes
         //to multithreading the playback of a single song, since the buffer can of course only be
         //used by one decode thread at a time. -JJ 21/04-2017
-        file->buffer = (unsigned char *) malloc(file->bufferSize * sizeof(unsigned char));
+        unsigned char* buffer = (unsigned char *) malloc(bufferSize * sizeof(unsigned char));
 
-        if (mpg123_open_fd(file->handle, fd)) {
-            __android_log_print(ANDROID_LOG_ERROR, TAG, "Failed calling open_fd: %s", mpg123_strerror(file->handle));
-            return 0;
+        if (mpg123_open_fd(handle, fd)) {
+            __android_log_print(ANDROID_LOG_ERROR, TAG, "Failed calling open_fd: %s", mpg123_strerror(handle));
+            return NULL;
         }
-        file->fd = fd;
-        if (mpg123_getformat(file->handle, &file->rate, &file->channels, &file->encoding)) {
-            __android_log_print(ANDROID_LOG_ERROR, TAG, "Failed getting the format: %s", mpg123_strerror(file->handle));
-            return 0;
+        long rate;
+        int channels;
+        int encoding;
+        if (mpg123_getformat(handle, &rate, &channels, &encoding)) {
+            __android_log_print(ANDROID_LOG_ERROR, TAG, "Failed getting the format: %s", mpg123_strerror(handle));
+            return NULL;
         }
-        return (jlong) file;
-    }
-
-    JNIEXPORT jlong JNICALL
-    Java_rocks_stalin_android_app_MP3Decoder_open(JNIEnv *env, jobject, jstring juri) {
-        const char *uri = env->GetStringUTFChars(juri, 0);
-
-        __android_log_print(ANDROID_LOG_WARN, TAG, "Opening file: %s", uri);
-
-        File *file = (File *) malloc(sizeof(File));
-        int err;
-        file->handle = mpg123_new(NULL, &err);
-        file->totalRead = 0;
-
-        file->bufferSize = mpg123_outblock(file->handle);
-        //I'm choosing to allocate a single buffer per song. This limits our options when it comes
-        //to multithreading the playback of a single song, since the buffer can of course only be
-        //used by one decode thread at a time. -JJ 21/04-2017
-        file->buffer = (unsigned char *) malloc(file->bufferSize * sizeof(unsigned char));
-
-        mpg123_open(file->handle, uri);
-        file->fd = 0;
-        mpg123_getformat(file->handle, &file->rate, &file->channels, &file->encoding);
-
-        env->ReleaseStringUTFChars(juri, uri);
-        return (jlong) file;
-    }
-
-    JNIEXPORT void JNICALL
-    Java_rocks_stalin_android_app_MP3Decoder_close(JNIEnv *env, jobject, jlong handle) {
-        File* file = (File *)handle;
-        free(file->buffer);
-        mpg123_close(file->handle);
-        if(file->fd != 0)
-            close(file->fd);
-        mpg123_delete(file->handle);
-    }
-
-
-    JNIEXPORT jbyteArray JNICALL
-    Java_rocks_stalin_android_app_MP3Decoder_decodeFrame(JNIEnv* env, jobject, jlong handle) {
-        File* file = (File *)handle;
-
-        size_t done;
-        if(mpg123_read(file->handle, file->buffer, file->bufferSize, &done) != MPG123_OK) {
-            __android_log_print(ANDROID_LOG_WARN, TAG, "Done decoding");
-            return env->NewByteArray(0);
-        } else {
-            __android_log_print(ANDROID_LOG_ERROR, TAG, "Failed decoding %s", mpg123_strerror(file->handle));
-        }
-        file->totalRead += done;
-        __android_log_print(ANDROID_LOG_WARN, TAG, "Decoded %ld bytes", file->totalRead);
-
-        jbyteArray arr = env->NewByteArray(done);
-        env->SetByteArrayRegion(arr, 0, done, (const jbyte *) file->buffer);
-        return arr;
+        __android_log_print(ANDROID_LOG_DEBUG, TAG, "Starting decoding of file with: %ld, %d, %d", rate, channels, encoding);
+        return MP3FileCreate(env, handle, buffer, bufferSize, fd,
+                             MP3MediaInfoCreate(env, rate, channels, bufferSize, encoding));
     }
 }
