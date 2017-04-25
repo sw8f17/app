@@ -54,11 +54,11 @@ import rocks.stalin.android.app.playback.QueueManager;
 import rocks.stalin.android.app.ui.NowPlayingActivity;
 import rocks.stalin.android.app.utils.LogHelper;
 
-import static rocks.stalin.android.app.NetworkService.CLIENT_HOST_NAME;
-import static rocks.stalin.android.app.NetworkService.CLIENT_PORT_NAME;
-import static rocks.stalin.android.app.NetworkService.MODE_CLIENT;
-import static rocks.stalin.android.app.NetworkService.MODE_NAME;
-import static rocks.stalin.android.app.NetworkService.MODE_SERVER;
+import static rocks.stalin.android.app.ServerNetworkService.CLIENT_HOST_NAME;
+import static rocks.stalin.android.app.ServerNetworkService.CLIENT_PORT_NAME;
+import static rocks.stalin.android.app.ServerNetworkService.MODE_CLIENT;
+import static rocks.stalin.android.app.ServerNetworkService.MODE_NAME;
+import static rocks.stalin.android.app.ServerNetworkService.MODE_SERVER;
 import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_EMPTY_ROOT;
 import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_ROOT;
 
@@ -134,7 +134,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
     private SessionManager mCastSessionManager;
     private SessionManagerListener<CastSession> mCastSessionManagerListener;
 
-    private NetworkService networkService;
+    private ServerNetworkService networkService;
     private boolean hasNetworkService;
     private boolean networkServiceStarted;
 
@@ -219,26 +219,12 @@ public class MusicService extends MediaBrowserServiceCompat implements
     }
 
     private abstract class NetworkServiceAction {
-        public abstract void run(NetworkService service);
+        public abstract void run(ServerNetworkService service);
     }
 
     private class NetworkServiceStartServerAction extends NetworkServiceAction{
-        public void run(NetworkService service) {
+        public void run(ServerNetworkService service) {
             service.startServer();
-        }
-    }
-
-    private class NetworkServiceStartClientAction extends NetworkServiceAction{
-        private final String hostname;
-        private final int port;
-
-        private NetworkServiceStartClientAction(String hostname, int port) {
-            this.hostname = hostname;
-            this.port = port;
-        }
-
-        public void run(NetworkService service) {
-            service.startClient(hostname, port);
         }
     }
 
@@ -252,7 +238,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-            NetworkService.LocalBinder binder = (NetworkService.LocalBinder) iBinder;
+            ServerNetworkService.LocalBinder binder = (ServerNetworkService.LocalBinder) iBinder;
             action.run(binder.getService());
             networkService = binder.getService();
             hasNetworkService = true;
@@ -288,14 +274,10 @@ public class MusicService extends MediaBrowserServiceCompat implements
             }
             String mode = startIntent.getStringExtra(MODE_NAME);
             if (!networkServiceStarted) {
-                Intent i = new Intent(this, NetworkService.class);
+                Intent i = new Intent(this, ServerNetworkService.class);
                 NetworkServiceAction networkAction;
                 if (mode.equals(MODE_SERVER)) {
                     networkAction = new NetworkServiceStartServerAction();
-                } else if (mode.equals(MODE_CLIENT)) {
-                    String hostname = startIntent.getStringExtra(CLIENT_HOST_NAME);
-                    int port = startIntent.getIntExtra(CLIENT_PORT_NAME, -1);
-                    networkAction = new NetworkServiceStartClientAction(hostname, port);
                 } else {
                     throw new RuntimeException("Unknown mode");
                 }
