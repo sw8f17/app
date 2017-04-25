@@ -92,13 +92,13 @@
 
         <service
             android:name=".ServerNetworkService"
-            android:exported="false">
-        </service>
-
+            android:exported="false" />
+        <service
+            android:name=".ClientNetworkService"
+            android:exported="false" />
         <service
             android:name=".ClientMusicService"
-            android:exported="false">
-        </service>
+            android:exported="false" />
 
         <!--
              (REQUIRED) use this meta data to to declare the app OptionsProvider.
