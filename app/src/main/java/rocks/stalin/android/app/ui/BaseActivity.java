@@ -48,6 +48,7 @@ public abstract class BaseActivity extends ActionBarCastActivity implements Medi
         super.onCreate(savedInstanceState);
 
         LogHelper.d(TAG, "Activity onCreate");
+        System.out.println(NetworkHelper.clockOffset());
 
         // Since our app icon has the same color as colorPrimary, our entry in the Recent Apps
         // list gets weird. We need to change either the icon or the color

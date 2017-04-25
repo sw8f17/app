@@ -25,18 +25,18 @@
         android:orientation="vertical">
 
         <TextView
+            android:id="@+id/select_mode_center"
             android:layout_width="250dp"
             android:layout_height="250dp"
-            android:id="@+id/select_mode_client1"
-            android:layout_centerVertical="true"
             android:layout_centerHorizontal="true"
+            android:layout_centerVertical="true"
             android:background="@drawable/middle_notify"
-            android:text="@string/select_mode"
             android:clickable="true"
-            android:textStyle="bold"
-            android:textSize="25sp"
-            android:textColor="#FF2D2D2D"
+            android:gravity="center"
+            android:text="@string/select_mode"
             android:textAllCaps="true"
-            android:gravity="center" />
+            android:textColor="#FF2D2D2D"
+            android:textSize="25sp"
+            android:textStyle="bold" />
     </RelativeLayout>
 </FrameLayout>
