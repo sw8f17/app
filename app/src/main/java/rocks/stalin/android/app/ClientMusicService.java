@@ -75,7 +75,7 @@ public class ClientMusicService extends Service {
             LogHelper.i(TAG, "Creating music service");
 
             Intent i = new Intent(this, ClientNetworkService.class);
-            bound = bindService(i, conn, BIND_AUTO_CREATE);
+            bindService(i, conn, BIND_AUTO_CREATE);
 
             hostname = intent.getStringExtra(CONNECT_HOST_NAME);
             port = intent.getIntExtra(CONNECT_PORT_NAME, -1);

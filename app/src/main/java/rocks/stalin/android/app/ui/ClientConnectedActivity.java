@@ -30,7 +30,7 @@ public class ClientConnectedActivity extends AppCompatActivity {
 
         Intent intent = this.getIntent();
         String ownerAddress = intent.getStringExtra(EXTRA_OWNER_ADDRESS);
-        Intent i = new Intent(ClientConnectedActivity.this, ClientMusicService.class);
+        Intent i = new Intent(this, ClientMusicService.class);
         i.setAction(ClientMusicService.ACTION_CONNECT);
         i.putExtra(ClientMusicService.CONNECT_HOST_NAME, ownerAddress);
         i.putExtra(ClientMusicService.CONNECT_PORT_NAME, 8009);
