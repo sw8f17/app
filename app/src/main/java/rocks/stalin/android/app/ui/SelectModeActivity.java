@@ -1,16 +1,21 @@
 package rocks.stalin.android.app.ui;
 
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
-import android.icu.util.TimeUnit;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.service.media.MediaBrowserService;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 
-import java.util.concurrent.ExecutionException;
-
 import rocks.stalin.android.app.R;
-import rocks.stalin.android.app.network.SntpOffsetTask;
 
+/**
+ * Created by delusional on 4/3/17.
+ */
 
 public class SelectModeActivity extends AppCompatActivity {
     @Override
