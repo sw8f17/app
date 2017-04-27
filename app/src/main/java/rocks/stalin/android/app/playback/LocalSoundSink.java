@@ -26,13 +26,16 @@ public class LocalSoundSink implements AudioSink {
     private int frameRatio;
 
     public LocalSoundSink() {
+        //We want to preload the track
+        audioWriteLock = new Semaphore(2, true);
     }
 
     @Override
     public void change(MP3MediaInfo mediaInfo, final PluggableMediaPlayer.MediaBuffer mediaBuffer) {
         if(at != null)
-            throw new IllegalStateException("You have to reset the sink before starting a new playback");
+            throw new IllegalStateException("You can't change media params before a reset");
         this.mediaInfo = mediaInfo;
+
         AudioFormat.Builder format = new AudioFormat.Builder()
                 .setSampleRate((int) mediaInfo.sampleRate)
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT);
@@ -73,20 +76,33 @@ public class LocalSoundSink implements AudioSink {
                 audioWriteLock.release();
             }
         });
-        //We want to preload the track
-        audioWriteLock = new Semaphore(2, true);
         at.setPositionNotificationPeriod((int) (mediaInfo.frameSize/frameRatio));
 
         audioThread = new Thread() {
+            private byte[] savedBuffer = null;
+            private int offset = 0;
             @Override
             public void run() {
                 while(true) {
                     try {
                         audioWriteLock.acquire();
-                        byte[] buffer = mediaBuffer.read();
-                        int written = at.write(buffer, 0, buffer.length, AudioTrack.WRITE_NON_BLOCKING);
-                        if(written != buffer.length)
+                        byte[] buffer;
+                        if (savedBuffer == null)
+                            buffer = mediaBuffer.read();
+                        else
+                            buffer = savedBuffer;
+                        //We know the offset is 0 if we don't have a saved buffer
+                        int written = at.write(buffer, offset, buffer.length-offset, AudioTrack.WRITE_NON_BLOCKING);
+                        if(written != buffer.length-offset) {
+                            //We overflowed, save for next run around
+                            savedBuffer = buffer;
+                            offset += written;
                             LogHelper.w(TAG, "Buffer overflow, discarding the overflowing bytes");
+                        } else {
+                            LogHelper.i(TAG, "Not overflow, written: ", written, ", permits: ", audioWriteLock.availablePermits());
+                            savedBuffer = null;
+                            offset = 0;
+                        }
                     } catch (InterruptedException e) {
                         return;
                     }
@@ -109,15 +125,22 @@ public class LocalSoundSink implements AudioSink {
 
     @Override
     public void stop() {
-        at.pause();
-        at.flush();
-        at.stop();
+        if(at != null) {
+            at.pause();
+            at.flush();
+            at.stop();
+        }
     }
 
     @Override
     public void resume() {
+        //The audiotrack will only play audio if the buffer is full at start -JJ 27/04-2017
+        //Apparently it's pretty common that the write goes though as 100%, but doesn't fill up
+        //The buffer. We ask it to write twice to circumvent this issue. We can do this because
+        //the audioThread implementation isn't actually required to run at the same speed as the
+        //audiotrack.
+        audioWriteLock.release(2);
         at.play();
-        audioWriteLock.release();
     }
 
     @Override
@@ -125,6 +148,9 @@ public class LocalSoundSink implements AudioSink {
         stop();
         at.release();
         audioThread.interrupt();
+        //Reset the write lock to buffer track
+        audioWriteLock.drainPermits();
+        audioWriteLock.release(2);
         at = null;
     }
 }
