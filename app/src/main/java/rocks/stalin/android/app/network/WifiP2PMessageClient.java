@@ -1,28 +1,26 @@
 package rocks.stalin.android.app.network;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
-import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
-import android.os.Build;
 import android.os.Looper;
-import android.util.Log;
 import android.widget.Toast;
 
 import java.io.IOException;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
-import rocks.stalin.android.app.ClientNetworkService;
 import rocks.stalin.android.app.model.Group;
+import rocks.stalin.android.app.proto.SongMetaData;
 import rocks.stalin.android.app.proto.Welcome;
+import rocks.stalin.android.app.ui.FullScreenClientActivity;
 import rocks.stalin.android.app.utils.LogHelper;
 
 /**
@@ -118,6 +116,18 @@ public class WifiP2PMessageClient {
                                         @Override
                                         public void packetReceived(Welcome message) {
                                             LogHelper.e(TAG, "DATA: ", message.song_name);
+                                        }
+                                    });
+                                    connection.addHandler(SongMetaData.class, new MessageConnection.MessageListener<SongMetaData, SongMetaData.Builder>() {
+                                        @Override
+                                        public void packetReceived(SongMetaData message) {
+                                            LogHelper.e(TAG, "Name: ", message.song_name, ". Artist: ", message.artist_name, ". Background URL: ", message.background_image_url);
+                                            Intent metadataIntent = new Intent();
+                                            metadataIntent.setAction(FullScreenClientActivity.BROADCAST_ACTION_IDENTIFIER);
+                                            metadataIntent.putExtra("SONG_NAME", message.song_name);
+                                            metadataIntent.putExtra("ARTIST_NAME", message.artist_name);
+                                            metadataIntent.putExtra("BACKGROUND_IMAGE_URL", message.background_image_url);
+                                            context.sendBroadcast(metadataIntent);
                                         }
                                     });
                                 } catch (IOException e) {

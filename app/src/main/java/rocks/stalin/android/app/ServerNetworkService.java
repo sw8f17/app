@@ -12,6 +12,7 @@ import java.io.IOException;
 import rocks.stalin.android.app.network.MessageConnection;
 import rocks.stalin.android.app.network.WifiP2PMessageServer;
 import rocks.stalin.android.app.proto.Welcome;
+import rocks.stalin.android.app.proto.SongMetaData;
 
 /**
  * Created by delusional on 4/5/17.
@@ -54,9 +55,15 @@ public class ServerNetworkService extends Service {
                 Welcome packet2 = new Welcome.Builder()
                         .song_name("Darude - Dankstorm")
                         .build();
+                SongMetaData songMetaData = new SongMetaData.Builder()
+                        .song_name("Sandstorm")
+                        .artist_name("Darude")
+                        .background_image_url("http://i3.kym-cdn.com/photos/images/facebook/000/862/065/0e9.jpg")
+                        .build();
                 try {
                     connection.send(packet, Welcome.class);
                     connection.send(packet2, Welcome.class);
+                    connection.send(songMetaData, SongMetaData.class);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

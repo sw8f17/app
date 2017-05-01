@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
+import rocks.stalin.android.app.proto.SongMetaData;
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
 
@@ -65,6 +66,11 @@ public class MessageConnection {
             case 1:
                 message = Welcome.ADAPTER.decode(data);
                 handler = handlers.get(type);
+                break;
+            case 2:
+                message = SongMetaData.ADAPTER.decode(data);
+                handler = handlers.get(type);
+                break;
         }
         if(handler != null && message != null) {
             /**

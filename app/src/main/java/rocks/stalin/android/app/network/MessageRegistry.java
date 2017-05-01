@@ -5,6 +5,7 @@ import com.squareup.wire.Message;
 import java.util.HashMap;
 import java.util.Map;
 
+import rocks.stalin.android.app.proto.SongMetaData;
 import rocks.stalin.android.app.proto.Welcome;
 
 public class MessageRegistry {
@@ -21,6 +22,7 @@ public class MessageRegistry {
     //Add messages here
     private MessageRegistry() {
         messages.put(Welcome.class, 1);
+        messages.put(SongMetaData.class, 2);
     }
 
     public int getID(Class<? extends Message> type) {

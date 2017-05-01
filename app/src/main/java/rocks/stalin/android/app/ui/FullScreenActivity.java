@@ -214,17 +214,23 @@ class FullScreenActivity extends ActionBarCastActivity {
             mBackgroundImage.setImageBitmap(art);
         } else {
             // otherwise, fetch a high res version and update:
-            cache.fetch(artUrl, new AlbumArtCache.FetchListener() {
-                @Override
-                public void onFetched(String artUrl, Bitmap bitmap, Bitmap icon) {
-                    // sanity check, in case a new fetch request has been done while
-                    // the previous hasn't yet returned:
-                    if (artUrl.equals(mCurrentArtUrl)) {
-                        mBackgroundImage.setImageBitmap(bitmap);
-                    }
-                }
-            });
+            fetchImageAsync(artUrl);
         }
+    }
+
+    protected void fetchImageAsync(@NonNull String url) {
+        AlbumArtCache cache = AlbumArtCache.getInstance();
+        mCurrentArtUrl = url;
+        cache.fetch(url, new AlbumArtCache.FetchListener() {
+            @Override
+            public void onFetched(String artUrl, Bitmap bitmap, Bitmap icon) {
+                // sanity check, in case a new fetch request has been done while
+                // the previous hasn't yet returned:
+                if (artUrl.equals(mCurrentArtUrl)) {
+                    mBackgroundImage.setImageBitmap(bitmap);
+                }
+            }
+        });
     }
 
     protected void updateMediaDescription(MediaDescriptionCompat description) {
