@@ -52,7 +52,8 @@ public class SelectGroupActivity extends AppCompatActivity {
             @Override
             public void select(Group group) {
                 Toast.makeText(SelectGroupActivity.this, "ID: " + group.name, Toast.LENGTH_SHORT).show();
-                ClientConnectedActivity.start(SelectGroupActivity.this, group.address);
+                //ClientConnectedActivity.start(SelectGroupActivity.this, group.address);
+                FullScreenClientActivity.start(SelectGroupActivity.this, group.address);
             }
         });
         rv.setAdapter(adapter);

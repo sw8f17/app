@@ -138,9 +138,6 @@ class FullScreenActivity extends ActionBarCastActivity {
         if (savedInstanceState == null) {
             updateFromParams(getIntent());
         }
-
-        mMediaBrowser = new MediaBrowserCompat(this,
-            new ComponentName(this, MusicService.class), mConnectionCallback, null);
     }
 
 

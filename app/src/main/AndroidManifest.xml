@@ -118,6 +118,18 @@
                 android:value=".ui.MusicPlayerActivity" />
         </activity>
 
+        <activity
+            android:name=".ui.FullScreenClientActivity"
+            android:label="test"
+            android:launchMode="singleTop"
+            android:parentActivityName=".ui.MusicPlayerActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".ui.MusicPlayerActivity" />
+        </activity>
+
+
+
         <!--
              A receiver that will receive media buttons and send as
             intents to your MediaBrowserServiceCompat implementation.

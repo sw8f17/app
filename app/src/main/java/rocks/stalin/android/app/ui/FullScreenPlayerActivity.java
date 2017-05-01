@@ -100,6 +100,10 @@ public class FullScreenPlayerActivity extends FullScreenActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mMediaBrowser = new MediaBrowserCompat(this,
+                new ComponentName(this, MusicService.class), mConnectionCallback, null);
+
         mPlayPause = (ImageView) findViewById(R.id.play_pause);
         mSkipNext = (ImageView) findViewById(R.id.next);
         mSkipPrev = (ImageView) findViewById(R.id.prev);

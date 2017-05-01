@@ -70,7 +70,15 @@ public class ClientMusicService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent == null) {
+            LogHelper.e(TAG, "Intent was null");
+            throw new NullPointerException();
+        }
         String action = intent.getAction();
+        if (action == null) {
+            LogHelper.e(TAG, "Action was null");
+            throw new NullPointerException();
+        }
         if (action.equals(ACTION_CONNECT)) {
             LogHelper.i(TAG, "Creating music service");
 
