@@ -32,6 +32,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
     private AudioSink sink;
 
     private OnPreparedListener preparedListener;
+    private OnSeekCompleteListener seekCompleteListener;
 
     public PluggableMediaPlayer() {
         decoder = new MP3Decoder();
@@ -91,7 +92,10 @@ public class PluggableMediaPlayer implements MediaPlayer {
     }
 
     @Override
-    public void seekTo(int position) {
+    public void seekTo(int msec) {
+        int sample = (int) ((currentFile.getMediaInfo().sampleRate * msec) / 1000);
+        currentFile.seek(sample);
+        seekCompleteListener.onSeekComplete(this);
     }
 
     @Override
@@ -114,7 +118,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     @Override
     public int getCurrentPosition() {
-        return 0;
+        return (int) (currentFile.tell() / currentFile.getMediaInfo().sampleRate) * 1000;
     }
 
     @Override
@@ -140,6 +144,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     @Override
     public void setOnSeekCompleteListener(OnSeekCompleteListener listener) {
+        this.seekCompleteListener = listener;
     }
 
     public class MediaBuffer {

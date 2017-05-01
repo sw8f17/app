@@ -79,29 +79,26 @@ public class LocalSoundSink implements AudioSink {
         at.setPositionNotificationPeriod((int) (mediaInfo.frameSize/frameRatio));
 
         audioThread = new Thread() {
-            private byte[] savedBuffer = null;
+            private byte[] buffer = null;
             private int offset = 0;
             @Override
             public void run() {
                 while(true) {
                     try {
                         audioWriteLock.acquire();
-                        byte[] buffer;
-                        if (savedBuffer == null)
+
+                        if (buffer == null)
                             buffer = mediaBuffer.read();
-                        else
-                            buffer = savedBuffer;
-                        //We know the offset is 0 if we don't have a saved buffer
-                        int written = at.write(buffer, offset, buffer.length-offset, AudioTrack.WRITE_NON_BLOCKING);
-                        if(written != buffer.length-offset) {
-                            //We overflowed, save for next run around
-                            savedBuffer = buffer;
+
+                        int written;
+                        do {
+                            written = at.write(buffer, offset, buffer.length-offset, AudioTrack.WRITE_NON_BLOCKING);
                             offset += written;
-                            LogHelper.w(TAG, "Buffer overflow, discarding the overflowing bytes");
-                        } else {
-                            LogHelper.i(TAG, "Not overflow, written: ", written, ", permits: ", audioWriteLock.availablePermits());
-                            savedBuffer = null;
+                        }while(offset < buffer.length && written > 0);
+
+                        if(offset >= buffer.length) {
                             offset = 0;
+                            buffer = null;
                         }
                     } catch (InterruptedException e) {
                         return;
@@ -145,9 +142,14 @@ public class LocalSoundSink implements AudioSink {
 
     @Override
     public void reset() {
+        audioThread.interrupt();
+        try {
+            audioThread.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         stop();
         at.release();
-        audioThread.interrupt();
         //Reset the write lock to buffer track
         audioWriteLock.drainPermits();
         audioWriteLock.release(2);

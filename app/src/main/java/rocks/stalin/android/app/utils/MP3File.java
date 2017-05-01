@@ -20,6 +20,8 @@ public class MP3File {
     public static native void staticInit();
 
     public native byte[] decodeFrame();
+    public native void seek(int sample);
+    public native long tell();
     public native void close();
 
     static {
@@ -30,4 +32,5 @@ public class MP3File {
     public MP3MediaInfo getMediaInfo() {
         return mediaInfo;
     }
+
 }

@@ -82,4 +82,16 @@ Java_rocks_stalin_android_app_utils_MP3File_decodeFrame(JNIEnv *env, jobject thi
     env->SetByteArrayRegion(arr, 0, done, (const jbyte *) file->buffer);
     return arr;
 }
+
+JNIEXPORT void JNICALL
+Java_rocks_stalin_android_app_utils_MP3File_seek(JNIEnv *env, jobject thiz, jint sample) {
+    File *file = getFile(env, thiz);
+    mpg123_seek(file->handle, sample, SEEK_SET);
+}
+
+JNIEXPORT jlong JNICALL
+Java_rocks_stalin_android_app_utils_MP3File_tell(JNIEnv *env, jobject thiz) {
+    File *file = getFile(env, thiz);
+    return mpg123_tell(file->handle);
+}
 }
