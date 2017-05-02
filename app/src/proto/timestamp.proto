@@ -4,7 +4,7 @@ package rocks.stalin.scotty;
 
 option java_package = "rocks.stalin.android.app.proto";
 
-message Welcome {
-  // Name of the playing song
-  string song_name = 1;
+message Timestamp {
+    int64 seconds = 1;
+    int32 nanos = 2;
 }
