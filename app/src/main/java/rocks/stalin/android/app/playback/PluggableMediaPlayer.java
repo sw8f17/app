@@ -11,9 +11,16 @@ import android.util.Log;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import okio.Sink;
 import rocks.stalin.android.app.MP3Decoder;
+import rocks.stalin.android.app.MP3MediaInfo;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.MP3File;
 
@@ -23,6 +30,9 @@ import rocks.stalin.android.app.utils.MP3File;
 
 public class PluggableMediaPlayer implements MediaPlayer {
     private static final String TAG = LogHelper.makeLogTag(PluggableMediaPlayer.class);
+
+    private ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
+    private ScheduledFuture<?> feederHandle;
 
     private MP3Decoder decoder;
     private MP3File currentFile;
@@ -34,22 +44,29 @@ public class PluggableMediaPlayer implements MediaPlayer {
     private OnPreparedListener preparedListener;
     private OnSeekCompleteListener seekCompleteListener;
 
+    private SampleQueue queue;
+    private MP3MediaInfo mediaInfo;
+
     public PluggableMediaPlayer() {
         decoder = new MP3Decoder();
         state = PlaybackState.Stopped;
-        //TODO: Is this a good idea to do here?
-        decoder.init();
+        queue = new SampleQueue();
     }
 
     @Override
     public void setAudioStreamType(int streamMusic) {
     }
 
-    //This isn't called before setDataSource so the library isn't initialized.
-    //We need to do something clever instead of what the fuck i'm doing now
     @Override
     public void prepareAsync() {
         state = PlaybackState.Stopped;
+
+        double frameSizeInSamples = mediaInfo.frameSize / (mediaInfo.encoding.getSampleSize() * mediaInfo.channels);
+        double frameTime = (frameSizeInSamples / mediaInfo.sampleRate) * 1000;
+
+        MediaPlayerFeeder feeder = new MediaPlayerFeeder(new MediaBuffer(currentFile), mediaInfo, queue);
+        feederHandle = service.scheduleAtFixedRate(feeder, 0, Math.round(frameTime), TimeUnit.MILLISECONDS);
+        sink.change(mediaInfo, this);
         preparedListener.onPrepared(this);
     }
 
@@ -59,12 +76,14 @@ public class PluggableMediaPlayer implements MediaPlayer {
         currentFile.close();
         currentFile = null;
         state = PlaybackState.Stopped;
+        feederHandle.cancel(false);
     }
 
     @Override
     public void release() {
         sink.reset();
         currentFile.close();
+        service.shutdown();
         decoder.exit();
     }
 
@@ -100,10 +119,17 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     @Override
     public void setDataSource(Context mContext, Uri uriSource) throws IOException {
-        currentFile = decoder.open(mContext, uriSource);
+        //TODO: Is this a good idea to do here?
+        decoder.init();
 
-        sink.change(currentFile.getMediaInfo(), new MediaBuffer(currentFile));
+        currentFile = decoder.open(mContext, uriSource);
+        mediaInfo = currentFile.getMediaInfo();
+
         state = PlaybackState.Stopped;
+    }
+
+    public byte[] read() {
+        return queue.getCurrent();
     }
 
     @Override
@@ -156,6 +182,34 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
         public byte[] read() {
             return file.decodeFrame();
+        }
+    }
+
+    private static class MediaPlayerFeeder implements Runnable {
+        private static final String TAG = LogHelper.makeLogTag(MediaPlayerFeeder.class);
+        private final double frameTime;
+
+        private MediaBuffer mediaBuffer;
+        private MP3MediaInfo mediaInfo;
+        private SampleQueue queue;
+
+        public MediaPlayerFeeder(MediaBuffer mediaBuffer, MP3MediaInfo mediaInfo, SampleQueue queue) {
+            this.mediaBuffer = mediaBuffer;
+            this.mediaInfo = mediaInfo;
+            this.queue = queue;
+
+            double frameSizeInSamples = mediaInfo.frameSize / (mediaInfo.encoding.getSampleSize() * mediaInfo.channels);
+            this.frameTime = (frameSizeInSamples / mediaInfo.sampleRate) * 1000;
+        }
+
+        @Override
+        public void run() {
+            LogHelper.i(TAG, "Running");
+            byte[] read = mediaBuffer.read();
+            long key = System.currentTimeMillis();
+            Long last = queue.getCurrentKey();
+            long next = last == -1 ? key : Math.round(last + frameTime);
+            queue.putSample(next, read);
         }
     }
 }

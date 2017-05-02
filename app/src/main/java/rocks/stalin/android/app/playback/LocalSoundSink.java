@@ -3,8 +3,6 @@ package rocks.stalin.android.app.playback;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioTrack;
-import android.os.Build;
-import android.support.v4.util.LogWriter;
 
 import java.util.concurrent.Semaphore;
 
@@ -31,7 +29,7 @@ public class LocalSoundSink implements AudioSink {
     }
 
     @Override
-    public void change(MP3MediaInfo mediaInfo, final PluggableMediaPlayer.MediaBuffer mediaBuffer) {
+    public void change(MP3MediaInfo mediaInfo, final PluggableMediaPlayer mediaBuffer) {
         if(at != null)
             throw new IllegalStateException("You can't change media params before a reset");
         this.mediaInfo = mediaInfo;
@@ -87,7 +85,7 @@ public class LocalSoundSink implements AudioSink {
                     try {
                         audioWriteLock.acquire();
 
-                        if (buffer == null)
+                        while(buffer == null)
                             buffer = mediaBuffer.read();
 
                         int written;

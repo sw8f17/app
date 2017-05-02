@@ -7,7 +7,7 @@ import rocks.stalin.android.app.MP3MediaInfo;
  */
 
 interface AudioSink {
-    void change(MP3MediaInfo mediaInfo, PluggableMediaPlayer.MediaBuffer mediaBuffer);
+    void change(MP3MediaInfo mediaInfo, PluggableMediaPlayer mediaBuffer);
     void play();
     void pause();
     void stop();
