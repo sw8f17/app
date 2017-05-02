@@ -21,7 +21,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.PowerManager;
@@ -38,17 +37,16 @@ import rocks.stalin.android.app.utils.MediaIDHelper;
 
 import java.io.IOException;
 
-import static android.media.MediaPlayer.OnCompletionListener;
-import static android.media.MediaPlayer.OnErrorListener;
-import static android.media.MediaPlayer.OnPreparedListener;
-import static android.media.MediaPlayer.OnSeekCompleteListener;
 import static android.support.v4.media.session.MediaSessionCompat.QueueItem;
 
 /**
  * A class that implements local media playback using {@link android.media.MediaPlayer}
  */
 public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeListener,
-        OnCompletionListener, OnErrorListener, OnPreparedListener, OnSeekCompleteListener {
+        MediaPlayer.OnCompletionListener,
+        MediaPlayer.OnErrorListener,
+        MediaPlayer.OnPreparedListener,
+        MediaPlayer.OnSeekCompleteListener {
 
     private static final String TAG = LogHelper.makeLogTag(LocalPlayback.class);
 
@@ -461,7 +459,9 @@ public class LocalPlayback implements Playback, AudioManager.OnAudioFocusChangeL
     private void createMediaPlayerIfNeeded() {
         LogHelper.d(TAG, "createMediaPlayerIfNeeded. needed? ", (mMediaPlayer==null));
         if (mMediaPlayer == null) {
-            mMediaPlayer = new MediaPlayer();
+            PluggableMediaPlayer pluggableMediaPlayer = new PluggableMediaPlayer();
+            pluggableMediaPlayer.plugSink(new LocalSoundSink());
+            mMediaPlayer = pluggableMediaPlayer;
 
             // Make sure the media player will acquire a wake-lock while
             // playing. If we don't do that, the CPU might go to sleep while the

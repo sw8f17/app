@@ -12,6 +12,7 @@ add_library( # Sets the name of the library.
              SHARED
 
              # Provides a relative path to your source file(s).
+             src/main/cpp/mp3file.cpp
              src/main/cpp/native-lib.cpp )
 
 find_library( # Sets the name of the path variable.
