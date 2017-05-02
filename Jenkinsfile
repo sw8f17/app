@@ -5,10 +5,19 @@ node {
         checkout scm
     }
 
+	stage ('Build toolchain') {
+		sh "rm -r ./toolchain || exit 0"
+		sh "./mktoolchains.sh /opt/Android/"
+	}
+
+	stage('Build Native') {
+		sh "./mkdep.sh"
+	}
+
     stage('Build') {
         gradle "clean build"
 
-        stash name: "sources"
+        stash name: "sources", excludes: "toolchain/"
     }
 }
 
