@@ -9,10 +9,6 @@
 /captures
 .externalNativeBuild
 
-app/src/main/jniLibs/
-app/src/main/cpp-dep/build/
-app/src/main/cpp-dep/install/
-
 javadoc/
 
 toolchain/
