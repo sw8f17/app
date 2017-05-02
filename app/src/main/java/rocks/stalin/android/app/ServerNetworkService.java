@@ -7,6 +7,8 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 
+import com.squareup.wire.Message;
+
 import java.io.IOException;
 
 import rocks.stalin.android.app.network.MessageConnection;
@@ -64,6 +66,15 @@ public class ServerNetworkService extends Service {
                     connection.send(packet, Welcome.class);
                     connection.send(packet2, Welcome.class);
                     connection.send(songMetaData, SongMetaData.class);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            @Override
+            public <M extends Message<M, B>, B extends Message.Builder<M, B>> void sendProto(MessageConnection connection, M message, Class<M> clazz) {
+                try {
+                    connection.send(message, clazz);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

@@ -2,6 +2,8 @@ package rocks.stalin.android.app.network;
 
 import android.os.AsyncTask;
 
+import com.squareup.wire.Message;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -17,7 +19,6 @@ public class ServerListener {
     private boolean running;
     private ServerSocket serverSocket;
     private Thread thread;
-
     public ServerListener(int port) throws IOException {
         this.port = port;
     }
@@ -62,5 +63,7 @@ public class ServerListener {
 
     public interface NewSocketListener {
         void onNewSocket(Socket socket);
+
+        <M extends Message<M, B>, B extends Message.Builder<M, B>> void sendProto(MessageConnection connection, M packet, Class<M> clazz);
     }
 }

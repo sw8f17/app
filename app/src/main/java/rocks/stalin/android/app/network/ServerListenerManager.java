@@ -1,5 +1,7 @@
 package rocks.stalin.android.app.network;
 
+import com.squareup.wire.Message;
+
 import java.io.IOException;
 import java.net.Socket;
 import java.util.LinkedHashMap;
@@ -23,6 +25,11 @@ public class ServerListenerManager {
                 dispatcher.start();
                 processThreads.put(socket, dispatcher);
             }
+
+            @Override
+            public <M extends Message<M, B>, B extends Message.Builder<M, B>> void sendProto(MessageConnection connection, M packet, Class<M> clazz) {
+
+            }
         });
     }
 
@@ -36,5 +43,7 @@ public class ServerListenerManager {
 
     public interface ClientListener {
         void connected(MessageConnection connection);
+
+        <M extends Message<M, B>, B extends Message.Builder<M, B>> void sendProto(MessageConnection connection, M packet, Class<M> clazz);
     }
 }

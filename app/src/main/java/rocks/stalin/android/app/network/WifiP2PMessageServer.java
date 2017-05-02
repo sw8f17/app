@@ -6,11 +6,14 @@ import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.os.Build;
 import android.os.Looper;
 
+import com.squareup.wire.Message;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import rocks.stalin.android.app.proto.SongMetaData;
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
 
@@ -47,6 +50,11 @@ public class WifiP2PMessageServer {
                 @Override
                 public void connected(MessageConnection connection) {
                     listener.onNewClient(connection);
+                }
+
+                @Override
+                public <M extends Message<M, B>, B extends Message.Builder<M, B>> void sendProto(MessageConnection connection, M packet, Class<M> clazz) {
+                    listener.sendProto(connection, packet, clazz);
                 }
             });
         } catch (IOException e) {
@@ -131,5 +139,7 @@ public class WifiP2PMessageServer {
 
     public interface ClientListener {
         void onNewClient(MessageConnection connection);
+
+        <M extends Message<M, B>, B extends Message.Builder<M, B>> void sendProto(MessageConnection connection, M message, Class<M> clazz);
     }
 }
