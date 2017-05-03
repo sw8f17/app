@@ -10,3 +10,10 @@
 .externalNativeBuild
 
 javadoc/
+toolchain/
+app/src/main/cpp-dep/build/
+
+
+
+CMakeCache.txt
+CMakeFiles/

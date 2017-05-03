@@ -1,0 +1,11 @@
+prefix=/mnt/c/Git/app-nolf/app/src/main/cpp-dep//install//x86_64
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libout123
+Description: A streaming audio output API derived from mpg123
+Requires: 
+Version: 1.24.0
+Libs: -L${libdir} -lout123 
+Cflags: -I${includedir} 
