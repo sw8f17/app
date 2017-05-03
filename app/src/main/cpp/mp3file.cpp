@@ -2,6 +2,9 @@
 #include <cwchar>
 #include <android/log.h>
 #include <unistd.h>
+#include <memory.h>
+#include <climits>
+#include <math.h>
 #include <mpg123.h>
 
 struct fields_t {
@@ -66,7 +69,7 @@ Java_rocks_stalin_android_app_utils_MP3File_close(JNIEnv *env, jobject thiz) {
 
 
 JNIEXPORT jbyteArray JNICALL
-Java_rocks_stalin_android_app_utils_MP3File_decodeFrame(JNIEnv *env, jobject thiz) {
+Java_rocks_stalin_android_app_utils_MP3File_decodeFrameNative(JNIEnv *env, jobject thiz) {
     File *file = getFile(env, thiz);
 
     size_t done;
@@ -79,6 +82,15 @@ Java_rocks_stalin_android_app_utils_MP3File_decodeFrame(JNIEnv *env, jobject thi
     __android_log_print(ANDROID_LOG_WARN, TAG, "Decoded %ld bytes", file->totalRead);
 
     jbyteArray arr = env->NewByteArray(done);
+    /*
+    memset(file->buffer, 0, file->bufferSize);
+    double amplitude = 0.25 * SHRT_MAX;
+    double freq = 1000;
+    unsigned short *sBuffer = (unsigned short *)file->buffer;
+    for(int i = 0; i < file->bufferSize/2; i++) {
+        sBuffer[i] = (unsigned short) (amplitude * sin((2 * 3.14 * i * freq) / 44100));
+    }
+     */
     env->SetByteArrayRegion(arr, 0, done, (const jbyte *) file->buffer);
     return arr;
 }
@@ -93,5 +105,11 @@ JNIEXPORT jlong JNICALL
 Java_rocks_stalin_android_app_utils_MP3File_tell(JNIEnv *env, jobject thiz) {
     File *file = getFile(env, thiz);
     return mpg123_tell(file->handle);
+}
+
+JNIEXPORT jlong JNICALL
+Java_rocks_stalin_android_app_utils_MP3File_tellframe(JNIEnv *env, jobject thiz) {
+    File *file = getFile(env, thiz);
+    return mpg123_tellframe(file->handle);
 }
 }

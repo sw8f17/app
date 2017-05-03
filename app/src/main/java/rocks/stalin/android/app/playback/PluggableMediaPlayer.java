@@ -1,24 +1,15 @@
 package rocks.stalin.android.app.playback;
 
-import android.content.ContentResolver;
 import android.content.Context;
-import android.content.res.AssetFileDescriptor;
-import android.media.RingtoneManager;
 import android.net.Uri;
-import android.provider.MediaStore;
-import android.provider.Settings;
-import android.util.Log;
 
-import java.io.FileDescriptor;
 import java.io.IOException;
-import java.util.Map;
-import java.util.TreeMap;
+import java.nio.ByteBuffer;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import okio.Sink;
 import rocks.stalin.android.app.MP3Decoder;
 import rocks.stalin.android.app.MP3MediaInfo;
 import rocks.stalin.android.app.utils.LogHelper;
@@ -39,18 +30,17 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     private PlaybackState state;
 
-    private AudioSink sink;
+    private LocalSoundSink sink;
 
     private OnPreparedListener preparedListener;
     private OnSeekCompleteListener seekCompleteListener;
 
-    private SampleQueue queue;
+    private TimedAudioPlayer player;
     private MP3MediaInfo mediaInfo;
 
     public PluggableMediaPlayer() {
         decoder = new MP3Decoder();
         state = PlaybackState.Stopped;
-        queue = new SampleQueue();
     }
 
     @Override
@@ -61,12 +51,14 @@ public class PluggableMediaPlayer implements MediaPlayer {
     public void prepareAsync() {
         state = PlaybackState.Stopped;
 
+        player = new TimedAudioPlayer(mediaInfo, System.currentTimeMillis());
         double frameSizeInSamples = mediaInfo.frameSize / (mediaInfo.encoding.getSampleSize() * mediaInfo.channels);
         double frameTime = (frameSizeInSamples / mediaInfo.sampleRate) * 1000;
 
-        MediaPlayerFeeder feeder = new MediaPlayerFeeder(new MediaBuffer(currentFile), mediaInfo, queue);
+        MediaPlayerFeeder feeder = new MediaPlayerFeeder(currentFile, mediaInfo, player);
+        sink = new LocalSoundSink(player);
         feederHandle = service.scheduleAtFixedRate(feeder, 0, Math.round(frameTime), TimeUnit.MILLISECONDS);
-        sink.change(mediaInfo, this);
+        sink.change(mediaInfo);
         preparedListener.onPrepared(this);
     }
 
@@ -85,10 +77,6 @@ public class PluggableMediaPlayer implements MediaPlayer {
         currentFile.close();
         service.shutdown();
         decoder.exit();
-    }
-
-    public void plugSink(AudioSink sink) {
-        this.sink = sink;
     }
 
     @Override
@@ -126,10 +114,6 @@ public class PluggableMediaPlayer implements MediaPlayer {
         mediaInfo = currentFile.getMediaInfo();
 
         state = PlaybackState.Stopped;
-    }
-
-    public byte[] read() {
-        return queue.getCurrent();
     }
 
     @Override
@@ -173,43 +157,39 @@ public class PluggableMediaPlayer implements MediaPlayer {
         this.seekCompleteListener = listener;
     }
 
-    public class MediaBuffer {
-        private MP3File file;
-
-        public MediaBuffer(MP3File file) {
-            this.file = file;
-        }
-
-        public byte[] read() {
-            return file.decodeFrame();
-        }
-    }
-
     private static class MediaPlayerFeeder implements Runnable {
         private static final String TAG = LogHelper.makeLogTag(MediaPlayerFeeder.class);
-        private final double frameTime;
+        public static final int PRELOAD_SIZE = 10;
 
-        private MediaBuffer mediaBuffer;
+        private MP3File file;
         private MP3MediaInfo mediaInfo;
-        private SampleQueue queue;
+        private TimedAudioPlayer player;
 
-        public MediaPlayerFeeder(MediaBuffer mediaBuffer, MP3MediaInfo mediaInfo, SampleQueue queue) {
-            this.mediaBuffer = mediaBuffer;
+        private int writtenFrames = 0;
+
+        public MediaPlayerFeeder(MP3File file, MP3MediaInfo mediaInfo, TimedAudioPlayer player) {
+            this.file = file;
             this.mediaInfo = mediaInfo;
-            this.queue = queue;
-
-            double frameSizeInSamples = mediaInfo.frameSize / (mediaInfo.encoding.getSampleSize() * mediaInfo.channels);
-            this.frameTime = (frameSizeInSamples / mediaInfo.sampleRate) * 1000;
+            this.player = player;
         }
 
         @Override
         public void run() {
-            LogHelper.i(TAG, "Running");
-            byte[] read = mediaBuffer.read();
-            long key = System.currentTimeMillis();
-            Long last = queue.getCurrentKey();
-            long next = last == -1 ? key : Math.round(last + frameTime);
-            queue.putSample(next, read);
+            LogHelper.i(TAG, "Feeding the audio player");
+
+            long playbackPos = player.getPlaybackPosition();
+            long playbackFramePos = mediaInfo.sampleToFrame(playbackPos);
+
+            long preloadedFrames = writtenFrames - playbackFramePos;
+
+            if(preloadedFrames < PRELOAD_SIZE) {
+                for(long i = preloadedFrames; i < PRELOAD_SIZE; i++) {
+                    long nextTime =  player.getNextSilence();
+                    ByteBuffer read = file.decodeFrame();
+                    player.pushFrame(nextTime, read);
+                    writtenFrames++;
+                }
+            }
         }
     }
 }

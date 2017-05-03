@@ -2,8 +2,11 @@ package rocks.stalin.android.app.playback;
 
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
+import android.media.AudioTimestamp;
 import android.media.AudioTrack;
+import android.os.Build;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.Semaphore;
 
 import rocks.stalin.android.app.MP3MediaInfo;
@@ -13,23 +16,25 @@ import rocks.stalin.android.app.utils.LogHelper;
  * Created by delusional on 4/24/17.
  */
 
-public class LocalSoundSink implements AudioSink {
+public class LocalSoundSink {
     public static final String TAG = LogHelper.makeLogTag(LocalSoundSink.class);
 
     AudioTrack at;
     private MP3MediaInfo mediaInfo;
 
+    private TimedAudioPlayer queue;
+
     private Thread audioThread;
     private Semaphore audioWriteLock;
     private int frameRatio;
 
-    public LocalSoundSink() {
+    public LocalSoundSink(TimedAudioPlayer queue) {
         //We want to preload the track
-        audioWriteLock = new Semaphore(2, true);
+        audioWriteLock = new Semaphore(1, true);
+        this.queue = queue;
     }
 
-    @Override
-    public void change(MP3MediaInfo mediaInfo, final PluggableMediaPlayer mediaBuffer) {
+    public void change(final MP3MediaInfo mediaInfo) {
         if(at != null)
             throw new IllegalStateException("You can't change media params before a reset");
         this.mediaInfo = mediaInfo;
@@ -50,7 +55,6 @@ public class LocalSoundSink implements AudioSink {
         frameRatio = mediaInfo.encoding.getSampleSize() * mediaInfo.channels;
 
         at = new AudioTrack.Builder()
-                .setBufferSizeInBytes((int) (mediaInfo.frameSize*2))
                 .setAudioAttributes(new AudioAttributes.Builder()
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -74,30 +78,31 @@ public class LocalSoundSink implements AudioSink {
                 audioWriteLock.release();
             }
         });
-        at.setPositionNotificationPeriod((int) (mediaInfo.frameSize/frameRatio));
+        at.setPositionNotificationPeriod(at.getBufferSizeInFrames() / 2);
 
         audioThread = new Thread() {
-            private byte[] buffer = null;
-            private int offset = 0;
+            private long bufferStart = 0;
             @Override
             public void run() {
                 while(true) {
                     try {
                         audioWriteLock.acquire();
 
-                        while(buffer == null)
-                            buffer = mediaBuffer.read();
+                        long time = System.currentTimeMillis();
+                        int playbackPosition = at.getPlaybackHeadPosition();
+                        int space = (int) ((playbackPosition + at.getBufferSizeInFrames()) - bufferStart);
 
-                        int written;
-                        do {
-                            written = at.write(buffer, offset, buffer.length-offset, AudioTrack.WRITE_NON_BLOCKING);
-                            offset += written;
-                        }while(offset < buffer.length && written > 0);
+                        long expectedEnd = mediaInfo.timeToPlayBytes((bufferStart - playbackPosition) * mediaInfo.getSampleSize());
 
-                        if(offset >= buffer.length) {
-                            offset = 0;
-                            buffer = null;
-                        }
+                        LogHelper.i(TAG, "At ", time, "ms, I'm expecting to run out of data in ", expectedEnd, "ms, or at ", time + expectedEnd, "ms");
+
+                        ByteBuffer buffer = queue.readFor(time + expectedEnd, space);
+
+                        int written = at.write(buffer, buffer.limit(), AudioTrack.WRITE_NON_BLOCKING);
+                        if(written != buffer.limit())
+                            throw new RuntimeException(String.format("Buffer overflow! Had: %d, but only wrote %d", buffer.limit(), written));
+                        bufferStart += written / mediaInfo.getSampleSize();
+
                     } catch (InterruptedException e) {
                         return;
                     }
@@ -108,17 +113,14 @@ public class LocalSoundSink implements AudioSink {
         audioThread.start();
     }
 
-    @Override
     public void play() {
         at.play();
     }
 
-    @Override
     public void pause() {
         at.pause();
     }
 
-    @Override
     public void stop() {
         if(at != null) {
             at.pause();
@@ -127,18 +129,16 @@ public class LocalSoundSink implements AudioSink {
         }
     }
 
-    @Override
     public void resume() {
         //The audiotrack will only play audio if the buffer is full at start -JJ 27/04-2017
         //Apparently it's pretty common that the write goes though as 100%, but doesn't fill up
         //The buffer. We ask it to write twice to circumvent this issue. We can do this because
         //the audioThread implementation isn't actually required to run at the same speed as the
         //audiotrack.
-        audioWriteLock.release(2);
+        audioWriteLock.release(1);
         at.play();
     }
 
-    @Override
     public void reset() {
         audioThread.interrupt();
         try {
@@ -150,7 +150,7 @@ public class LocalSoundSink implements AudioSink {
         at.release();
         //Reset the write lock to buffer track
         audioWriteLock.drainPermits();
-        audioWriteLock.release(2);
+        audioWriteLock.release(1);
         at = null;
     }
 }

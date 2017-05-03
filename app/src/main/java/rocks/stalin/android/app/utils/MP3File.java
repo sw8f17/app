@@ -1,5 +1,7 @@
 package rocks.stalin.android.app.utils;
 
+import java.nio.ByteBuffer;
+
 import rocks.stalin.android.app.MP3Encoding;
 import rocks.stalin.android.app.MP3MediaInfo;
 
@@ -19,14 +21,19 @@ public class MP3File {
 
     public static native void staticInit();
 
-    public native byte[] decodeFrame();
+    public native byte[] decodeFrameNative();
     public native void seek(int sample);
     public native long tell();
+    public native long tellframe();
     public native void close();
 
     static {
         System.loadLibrary("native-lib");
         staticInit();
+    }
+
+    public ByteBuffer decodeFrame() {
+        return ByteBuffer.wrap(decodeFrameNative());
     }
 
     public MP3MediaInfo getMediaInfo() {
