@@ -1,5 +1,7 @@
 package rocks.stalin.android.app.decoding;
 
+import rocks.stalin.android.app.utils.time.Clock;
+
 /**
  * Created by delusional on 4/24/17.
  */
@@ -27,11 +29,11 @@ public class MP3MediaInfo {
         return encoding.getSampleSize() * channels;
     }
 
-    public long timeToPlayBytes(long bytes) {
-        return (bytes * 1000) / (getSampleSize() * sampleRate);
+    public Clock.Duration timeToPlayBytes(long bytes) {
+        return Clock.Duration.FromNanos((bytes * 1000000000) / (getSampleSize() * sampleRate));
     }
 
-    public int bytesPlayedInTime(long milliseconds) {
-        return (int) ((sampleRate * milliseconds * getSampleSize()) / 1000);
+    public int bytesPlayedInTime(Clock.Duration duration) {
+        return (int) ((sampleRate * duration.inMillis() * getSampleSize()) / 1000);
     }
 }

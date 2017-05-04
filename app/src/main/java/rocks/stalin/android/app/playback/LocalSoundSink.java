@@ -2,27 +2,25 @@ package rocks.stalin.android.app.playback;
 
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
+import android.media.AudioTimestamp;
 import android.media.AudioTrack;
-import android.support.annotation.NonNull;
 
 import java.nio.ByteBuffer;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.ThreadFactory;
 
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.playback.actions.TimedAction;
 import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.time.Clock;
 
 /**
  * Created by delusional on 4/24/17.
  */
 
-public class LocalSoundSink implements AudioMixer.NewActionListener {
+public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
     public static final String TAG = LogHelper.makeLogTag(LocalSoundSink.class);
 
     private Timer timer = new Timer("SMUS - Action Scheduler", true);
@@ -31,13 +29,13 @@ public class LocalSoundSink implements AudioMixer.NewActionListener {
     AudioTrack at;
     private MP3MediaInfo mediaInfo;
 
-    private AudioMixer queue;
+    private LocalAudioMixer queue;
 
     private Thread audioThread;
     private Semaphore audioWriteLock;
     private int frameRatio;
 
-    public LocalSoundSink(AudioMixer queue) {
+    public LocalSoundSink(LocalAudioMixer queue) {
         //We want to preload the track
         audioWriteLock = new Semaphore(1, true);
         this.queue = queue;
@@ -82,7 +80,7 @@ public class LocalSoundSink implements AudioMixer.NewActionListener {
 
             @Override
             public void onPeriodicNotification(AudioTrack track) {
-                LogHelper.d(TAG, "Time for more data");
+                LogHelper.i(TAG, "Instant for more data");
                 if(audioWriteLock.availablePermits() > 0)
                     LogHelper.w(TAG, "Buffer underflow. It seems like we aren't reading data quickly enough. You might notice pauses");
                 audioWriteLock.release();
@@ -98,15 +96,22 @@ public class LocalSoundSink implements AudioMixer.NewActionListener {
                     try {
                         audioWriteLock.acquire();
 
-                        long time = System.currentTimeMillis();
-                        int playbackPosition = at.getPlaybackHeadPosition();
-                        int space = (int) ((playbackPosition + at.getBufferSizeInFrames()) - bufferStart);
+                        AudioTimestamp timestamp = new AudioTimestamp();
+                        Clock.Instant now;
+                        if(at.getTimestamp(timestamp)) {
+                            now = Clock.fromNanos(timestamp.nanoTime);
+                        } else {
+                            now = Clock.getTime();
+                        }
 
-                        long expectedEnd = mediaInfo.timeToPlayBytes((bufferStart - playbackPosition) * mediaInfo.getSampleSize());
+                        long playbackPosition = timestamp.framePosition;
+                        int space = (int) ((at.getPlaybackHeadPosition() + at.getBufferSizeInFrames()) - bufferStart);
 
-                        LogHelper.i(TAG, "At ", time, "ms, I'm expecting to run out of data in ", expectedEnd, "ms, or at ", time + expectedEnd, "ms");
+                        Clock.Duration expectedEnd = mediaInfo.timeToPlayBytes((bufferStart - playbackPosition) * mediaInfo.getSampleSize());
 
-                        ByteBuffer buffer = queue.readFor(time + expectedEnd, space);
+                        LogHelper.i(TAG, "At ", now, ", I'm expecting to run out of data in ", expectedEnd, ", or at ", now.add(expectedEnd));
+
+                        ByteBuffer buffer = queue.readFor(now.add(expectedEnd), space);
 
                         int written = at.write(buffer, buffer.limit(), AudioTrack.WRITE_NON_BLOCKING);
                         if(written != buffer.limit())
@@ -114,6 +119,7 @@ public class LocalSoundSink implements AudioMixer.NewActionListener {
                         bufferStart += written / mediaInfo.getSampleSize();
 
                     } catch (InterruptedException e) {
+                        LogHelper.w(TAG, "Audiotrack thread was killed");
                         return;
                     }
                 }
@@ -175,15 +181,18 @@ public class LocalSoundSink implements AudioMixer.NewActionListener {
         //If the new is before the currently scheduled action we need to cancel the current
         //and schedule the new
         if(scheduled != null && action.getTime() < scheduled.getTime()) {
+            LogHelper.i(TAG, "Evicting currently scheduled task");
             queue.pushAction(scheduled);
             timer.cancel();
             scheduled = null;
         }
         if(scheduled == null) {
+            LogHelper.i(TAG, "Scheduling ", action, " for execution");
             scheduled = action;
             timer.schedule(new TimerTask() {
                 @Override
                 public void run() {
+                    LogHelper.i(TAG, "Executing action ", action);
                     scheduled = null;
                     action.execute(at);
                 }

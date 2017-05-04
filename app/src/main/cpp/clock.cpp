@@ -12,7 +12,7 @@ static const char *TAG = "Clock-NATIVE";
 extern "C" {
 JNIEXPORT void JNICALL
 Java_rocks_stalin_android_app_utils_time_Clock_staticInit(JNIEnv *env, jclass type) {
-    fields.timeClazz = (jclass) env->NewGlobalRef(env->FindClass("rocks/stalin/android/app/utils/time/Clock$Time"));
+    fields.timeClazz = (jclass) env->NewGlobalRef(env->FindClass("rocks/stalin/android/app/utils/time/Clock$Instant"));
     if(fields.timeClazz == NULL)
         return;
 
@@ -22,15 +22,15 @@ Java_rocks_stalin_android_app_utils_time_Clock_staticInit(JNIEnv *env, jclass ty
 }
 
 jobject
-TimeCreate(JNIEnv* env, long seconds, long nanos) {
+TimeCreate(JNIEnv* env, int64_t millis, int64_t nanos) {
     return env->NewObject(fields.timeClazz, fields.timeCons,
-                          (jlong) seconds, (jlong) nanos);
+                          (jlong) millis, (jlong) nanos);
 }
 
 JNIEXPORT jobject JNICALL
 Java_rocks_stalin_android_app_utils_time_Clock_getTime(JNIEnv *env, jclass type) {
     timespec time;
     clock_gettime(CLOCK_REALTIME, &time);
-    return TimeCreate(env, time.tv_sec, time.tv_nsec);
+    return TimeCreate(env, ((int64_t)time.tv_sec) * 1000, time.tv_nsec);
 }
 }
