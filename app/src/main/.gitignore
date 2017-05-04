@@ -2,3 +2,4 @@ jniLibs/
 cpp-dep/build/
 cpp-dep/install/
 
+cpp-dep/mpg123/Makefile.in

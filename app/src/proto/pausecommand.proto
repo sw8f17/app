@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package rocks.stalin.scotty;
+
+import "timestamp.proto";
+
+option java_package = "rocks.stalin.android.app.proto";
+
+message PauseCommand {
+    // Time at which to start the playback
+    Timestamp playtime = 1;
+
+    // The location of the "play head" when the music is paused
+    int64 playhead = 2;
+}
