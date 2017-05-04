@@ -2,36 +2,46 @@ package rocks.stalin.android.app.playback;
 
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
-import android.media.AudioTimestamp;
 import android.media.AudioTrack;
-import android.os.Build;
+import android.support.annotation.NonNull;
 
 import java.nio.ByteBuffer;
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadFactory;
 
-import rocks.stalin.android.app.MP3MediaInfo;
+import rocks.stalin.android.app.decoding.MP3MediaInfo;
+import rocks.stalin.android.app.playback.actions.TimedAction;
 import rocks.stalin.android.app.utils.LogHelper;
 
 /**
  * Created by delusional on 4/24/17.
  */
 
-public class LocalSoundSink {
+public class LocalSoundSink implements AudioMixer.NewActionListener {
     public static final String TAG = LogHelper.makeLogTag(LocalSoundSink.class);
+
+    private Timer timer = new Timer("SMUS - Action Scheduler", true);
+    private TimedAction scheduled = null;
 
     AudioTrack at;
     private MP3MediaInfo mediaInfo;
 
-    private TimedAudioPlayer queue;
+    private AudioMixer queue;
 
     private Thread audioThread;
     private Semaphore audioWriteLock;
     private int frameRatio;
 
-    public LocalSoundSink(TimedAudioPlayer queue) {
+    public LocalSoundSink(AudioMixer queue) {
         //We want to preload the track
         audioWriteLock = new Semaphore(1, true);
         this.queue = queue;
+        queue.setNewActionListener(this);
     }
 
     public void change(final MP3MediaInfo mediaInfo) {
@@ -152,5 +162,34 @@ public class LocalSoundSink {
         audioWriteLock.drainPermits();
         audioWriteLock.release(1);
         at = null;
+    }
+
+    @Override
+    public boolean onNewAction(final TimedAction action) {
+        long currentTime = System.currentTimeMillis();
+        if(action.getTime() < currentTime) {
+            LogHelper.w(TAG, "Woops, we missed that deadline. Let's just do it now");
+            action.execute(at);
+            return true;
+        }
+        //If the new is before the currently scheduled action we need to cancel the current
+        //and schedule the new
+        if(scheduled != null && action.getTime() < scheduled.getTime()) {
+            queue.pushAction(scheduled);
+            timer.cancel();
+            scheduled = null;
+        }
+        if(scheduled == null) {
+            scheduled = action;
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    scheduled = null;
+                    action.execute(at);
+                }
+            }, new Date(action.getTime()));
+            return true;
+        }
+        return false;
     }
 }

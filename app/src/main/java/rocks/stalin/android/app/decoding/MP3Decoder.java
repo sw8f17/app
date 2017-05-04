@@ -1,4 +1,4 @@
-package rocks.stalin.android.app;
+package rocks.stalin.android.app.decoding;
 
 import android.content.ContentResolver;
 import android.content.Context;
@@ -9,12 +9,9 @@ import android.os.ParcelFileDescriptor;
 import android.provider.Settings;
 
 import java.io.File;
-import java.io.FileDescriptor;
-import java.io.FileInputStream;
 import java.io.IOException;
 
 import rocks.stalin.android.app.utils.LogHelper;
-import rocks.stalin.android.app.utils.MP3File;
 
 /**
  * Created by delusional on 4/10/17.

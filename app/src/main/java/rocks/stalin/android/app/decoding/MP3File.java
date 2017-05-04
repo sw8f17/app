@@ -1,9 +1,6 @@
-package rocks.stalin.android.app.utils;
+package rocks.stalin.android.app.decoding;
 
 import java.nio.ByteBuffer;
-
-import rocks.stalin.android.app.MP3Encoding;
-import rocks.stalin.android.app.MP3MediaInfo;
 
 /**
  * Created by delusional on 4/24/17.

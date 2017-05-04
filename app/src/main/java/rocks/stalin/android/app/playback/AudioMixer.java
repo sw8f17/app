@@ -1,32 +1,38 @@
 package rocks.stalin.android.app.playback;
 
-import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
-import java.nio.ShortBuffer;
-import java.sql.Time;
-import java.util.Arrays;
+import java.util.PriorityQueue;
 import java.util.TreeMap;
 
-import rocks.stalin.android.app.MP3MediaInfo;
+import rocks.stalin.android.app.decoding.MP3MediaInfo;
+import rocks.stalin.android.app.playback.actions.TimedAction;
 import rocks.stalin.android.app.utils.LogHelper;
 
 /**
  * Created by delusional on 5/3/17.
  */
 
-class TimedAudioPlayer {
-    private static final String TAG = LogHelper.makeLogTag(TimedAudioPlayer.class);
+class AudioMixer {
+    private static final String TAG = LogHelper.makeLogTag(AudioMixer.class);
 
-    TreeMap<Long, ByteBuffer> buffer;
+    private TreeMap<Long, ByteBuffer> buffer;
+    private PriorityQueue<TimedAction> actions;
     private long nextSilence = 0;
     private long framePosition;
     private MP3MediaInfo mediaInfo;
 
-    TimedAudioPlayer(MP3MediaInfo mediaInfo, long startTime) {
+    private NewActionListener newActionListener;
+
+    AudioMixer(MP3MediaInfo mediaInfo, long startTime) {
         buffer = new TreeMap<>();
+        actions = new PriorityQueue<>();
 
         this.mediaInfo = mediaInfo;
         nextSilence = startTime;
+    }
+
+    public void setNewActionListener(NewActionListener listener) {
+        newActionListener = listener;
     }
 
     public long getPlaybackPosition() {
@@ -42,6 +48,15 @@ class TimedAudioPlayer {
         long frameEnd = nextTime + mediaInfo.timeToPlayBytes(read.limit());
         if(frameEnd > nextSilence)
             nextSilence = frameEnd;
+    }
+
+    public void pushAction(TimedAction action) {
+        if(!newActionListener.onNewAction(action))
+            actions.add(action);
+    }
+
+    public TimedAction readAction() {
+        return actions.poll();
     }
 
     public ByteBuffer readFor(long time, int samples) {
@@ -93,4 +108,9 @@ class TimedAudioPlayer {
         mixedBuffer.limit(mixedBuffer.capacity());
         return mixedBuffer;
     }
+
+    public interface NewActionListener {
+        boolean onNewAction(TimedAction action);
+    }
 }
+

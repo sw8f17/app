@@ -10,10 +10,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import rocks.stalin.android.app.MP3Decoder;
-import rocks.stalin.android.app.MP3MediaInfo;
+import rocks.stalin.android.app.decoding.MP3Decoder;
+import rocks.stalin.android.app.decoding.MP3MediaInfo;
+import rocks.stalin.android.app.playback.actions.PauseAction;
+import rocks.stalin.android.app.playback.actions.PlayAction;
 import rocks.stalin.android.app.utils.LogHelper;
-import rocks.stalin.android.app.utils.MP3File;
+import rocks.stalin.android.app.decoding.MP3File;
 
 /**
  * Created by delusional on 4/24/17.
@@ -35,7 +37,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
     private OnPreparedListener preparedListener;
     private OnSeekCompleteListener seekCompleteListener;
 
-    private TimedAudioPlayer player;
+    private AudioMixer player;
     private MP3MediaInfo mediaInfo;
 
     public PluggableMediaPlayer() {
@@ -51,7 +53,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
     public void prepareAsync() {
         state = PlaybackState.Stopped;
 
-        player = new TimedAudioPlayer(mediaInfo, System.currentTimeMillis());
+        player = new AudioMixer(mediaInfo, System.currentTimeMillis());
         double frameSizeInSamples = mediaInfo.frameSize / (mediaInfo.encoding.getSampleSize() * mediaInfo.channels);
         double frameTime = (frameSizeInSamples / mediaInfo.sampleRate) * 1000;
 
@@ -82,11 +84,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
     @Override
     public void start() {
         LogHelper.e(TAG, "Starting playback");
-        if(state == PlaybackState.Stopped) {
-            sink.play();
-        } else {
-            sink.resume();
-        }
+        player.pushAction(new PlayAction(System.currentTimeMillis() + 1000));
         state = PlaybackState.Playing;
 
     }
@@ -94,7 +92,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
     @Override
     public void pause() {
         LogHelper.e(TAG, "Pausing playback");
-        sink.pause();
+        player.pushAction(new PauseAction(System.currentTimeMillis() + 1000));
         state = PlaybackState.Paused;
     }
 
@@ -163,11 +161,11 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
         private MP3File file;
         private MP3MediaInfo mediaInfo;
-        private TimedAudioPlayer player;
+        private AudioMixer player;
 
         private int writtenFrames = 0;
 
-        public MediaPlayerFeeder(MP3File file, MP3MediaInfo mediaInfo, TimedAudioPlayer player) {
+        public MediaPlayerFeeder(MP3File file, MP3MediaInfo mediaInfo, AudioMixer player) {
             this.file = file;
             this.mediaInfo = mediaInfo;
             this.player = player;

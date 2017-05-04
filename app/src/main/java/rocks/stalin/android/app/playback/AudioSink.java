@@ -1,6 +1,6 @@
 package rocks.stalin.android.app.playback;
 
-import rocks.stalin.android.app.MP3MediaInfo;
+import rocks.stalin.android.app.decoding.MP3MediaInfo;
 
 /**
  * Created by delusional on 4/24/17.

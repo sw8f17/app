@@ -1,4 +1,4 @@
-package rocks.stalin.android.app;
+package rocks.stalin.android.app.decoding;
 
 /**
  * Created by delusional on 4/24/17.
