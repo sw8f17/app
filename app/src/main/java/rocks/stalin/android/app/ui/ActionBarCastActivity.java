@@ -300,7 +300,7 @@ public abstract class ActionBarCastActivity extends AppCompatActivity {
     }
 
     /**
-     * Shows the Cast First Time User experience to the user (an overlay that explains what is
+     * Shows the Cast First Instant User experience to the user (an overlay that explains what is
      * the Cast icon)
      */
     private void showFtu() {

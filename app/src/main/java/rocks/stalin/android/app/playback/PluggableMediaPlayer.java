@@ -1,21 +1,23 @@
 package rocks.stalin.android.app.playback;
 
-import android.content.ContentResolver;
 import android.content.Context;
-import android.content.res.AssetFileDescriptor;
-import android.media.RingtoneManager;
+import android.media.AudioFormat;
 import android.net.Uri;
-import android.provider.MediaStore;
-import android.provider.Settings;
-import android.util.Log;
 
-import java.io.FileDescriptor;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
-import okio.Sink;
-import rocks.stalin.android.app.MP3Decoder;
+import rocks.stalin.android.app.decoding.MP3Decoder;
+import rocks.stalin.android.app.decoding.MP3MediaInfo;
+import rocks.stalin.android.app.playback.actions.PauseAction;
+import rocks.stalin.android.app.playback.actions.PlayAction;
 import rocks.stalin.android.app.utils.LogHelper;
-import rocks.stalin.android.app.utils.MP3File;
+import rocks.stalin.android.app.decoding.MP3File;
+import rocks.stalin.android.app.utils.time.Clock;
 
 /**
  * Created by delusional on 4/24/17.
@@ -24,32 +26,44 @@ import rocks.stalin.android.app.utils.MP3File;
 public class PluggableMediaPlayer implements MediaPlayer {
     private static final String TAG = LogHelper.makeLogTag(PluggableMediaPlayer.class);
 
+    private ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
+    private ScheduledFuture<?> feederHandle;
+
     private MP3Decoder decoder;
     private MP3File currentFile;
 
     private PlaybackState state;
 
-    private AudioSink sink;
+    private LocalSoundSink sink;
 
     private OnPreparedListener preparedListener;
     private OnSeekCompleteListener seekCompleteListener;
 
+    private LocalAudioMixer player;
+    private MP3MediaInfo mediaInfo;
+
     public PluggableMediaPlayer() {
         decoder = new MP3Decoder();
         state = PlaybackState.Stopped;
-        //TODO: Is this a good idea to do here?
-        decoder.init();
     }
 
     @Override
     public void setAudioStreamType(int streamMusic) {
     }
 
-    //This isn't called before setDataSource so the library isn't initialized.
-    //We need to do something clever instead of what the fuck i'm doing now
     @Override
     public void prepareAsync() {
         state = PlaybackState.Stopped;
+
+        player = new LocalAudioMixer(mediaInfo, System.currentTimeMillis());
+        double frameSizeInSamples = mediaInfo.frameSize / (mediaInfo.encoding.getSampleSize() * mediaInfo.channels);
+        double frameTime = (frameSizeInSamples / mediaInfo.sampleRate) * 1000;
+
+        MediaPlayerFeeder feeder = new MediaPlayerFeeder(currentFile, mediaInfo, player);
+        feeder.setStartTime(Clock.getTime());
+        sink = new LocalSoundSink(player);
+        feederHandle = service.scheduleAtFixedRate(feeder, 0, Math.round(frameTime), TimeUnit.MILLISECONDS);
+        sink.change(mediaInfo);
         preparedListener.onPrepared(this);
     }
 
@@ -59,27 +73,21 @@ public class PluggableMediaPlayer implements MediaPlayer {
         currentFile.close();
         currentFile = null;
         state = PlaybackState.Stopped;
+        feederHandle.cancel(false);
     }
 
     @Override
     public void release() {
         sink.reset();
         currentFile.close();
+        service.shutdown();
         decoder.exit();
-    }
-
-    public void plugSink(AudioSink sink) {
-        this.sink = sink;
     }
 
     @Override
     public void start() {
         LogHelper.e(TAG, "Starting playback");
-        if(state == PlaybackState.Stopped) {
-            sink.play();
-        } else {
-            sink.resume();
-        }
+        player.pushAction(new PlayAction(Clock.getTime().add(Clock.Duration.fromSeconds(1))));
         state = PlaybackState.Playing;
 
     }
@@ -87,7 +95,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
     @Override
     public void pause() {
         LogHelper.e(TAG, "Pausing playback");
-        sink.pause();
+        player.pushAction(new PauseAction(Clock.getTime().add(Clock.Duration.fromSeconds(1))));
         state = PlaybackState.Paused;
     }
 
@@ -100,9 +108,12 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     @Override
     public void setDataSource(Context mContext, Uri uriSource) throws IOException {
-        currentFile = decoder.open(mContext, uriSource);
+        //TODO: Is this a good idea to do here?
+        decoder.init();
 
-        sink.change(currentFile.getMediaInfo(), new MediaBuffer(currentFile));
+        currentFile = decoder.open(mContext, uriSource);
+        mediaInfo = currentFile.getMediaInfo();
+
         state = PlaybackState.Stopped;
     }
 
@@ -147,15 +158,41 @@ public class PluggableMediaPlayer implements MediaPlayer {
         this.seekCompleteListener = listener;
     }
 
-    public class MediaBuffer {
-        private MP3File file;
+    private static class MediaPlayerFeeder implements Runnable {
+        private static final String TAG = LogHelper.makeLogTag(MediaPlayerFeeder.class);
+        public static final int PRELOAD_SIZE = 2;
 
-        public MediaBuffer(MP3File file) {
+        private MP3File file;
+        private MP3MediaInfo mediaInfo;
+        private AudioMixer player;
+        private Clock.Instant nextFrameStart;
+
+        public MediaPlayerFeeder(MP3File file, MP3MediaInfo mediaInfo, AudioMixer player) {
             this.file = file;
+            this.mediaInfo = mediaInfo;
+            this.player = player;
         }
 
-        public byte[] read() {
-            return file.decodeFrame();
+        public void setStartTime(Clock.Instant instant) {
+            nextFrameStart = instant;
+        }
+
+        @Override
+        public void run() {
+            LogHelper.i(TAG, "Feeding the audio player");
+
+            Clock.Instant now = Clock.getTime();
+
+            Clock.Duration frameTime = mediaInfo.timeToPlayBytes(mediaInfo.frameSize);
+            Clock.Duration preloadBufferSize = frameTime.multiply(PRELOAD_SIZE);
+            Clock.Instant bufferEnd = now.add(preloadBufferSize);
+
+            while(nextFrameStart.before(bufferEnd)) {
+                LogHelper.i(TAG, "Inserting frame into the buffer for playback at ", nextFrameStart);
+                ByteBuffer read = file.decodeFrame();
+                player.pushFrame(nextFrameStart, read);
+                nextFrameStart = nextFrameStart.add(mediaInfo.timeToPlayBytes(read.limit()));
+            }
         }
     }
 }

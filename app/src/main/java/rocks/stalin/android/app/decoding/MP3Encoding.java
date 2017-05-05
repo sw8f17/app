@@ -1,9 +1,6 @@
-package rocks.stalin.android.app;
+package rocks.stalin.android.app.decoding;
 
 import android.util.SparseArray;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Created by delusional on 4/24/17.

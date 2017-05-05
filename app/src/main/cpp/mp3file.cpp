@@ -29,7 +29,7 @@ void setFile(JNIEnv* env, jobject thiz, File* file) {
 
 extern "C" {
 JNIEXPORT void JNICALL
-Java_rocks_stalin_android_app_utils_MP3File_nativeCons(JNIEnv *env, jobject thiz, jlong handle,
+Java_rocks_stalin_android_app_decoding_MP3File_nativeCons(JNIEnv *env, jobject thiz, jlong handle,
                                                        jlong buffer,
                                                        jlong bufferSize, jint fd) {
     File *file = (File *) malloc(sizeof(File));
@@ -44,7 +44,7 @@ Java_rocks_stalin_android_app_utils_MP3File_nativeCons(JNIEnv *env, jobject thiz
 }
 
 JNIEXPORT void JNICALL
-Java_rocks_stalin_android_app_utils_MP3File_staticInit(JNIEnv *env, jclass type) {
+Java_rocks_stalin_android_app_decoding_MP3File_staticInit(JNIEnv *env, jclass type) {
     fields.context = env->GetFieldID(type, "context", "J");
     if (fields.context == NULL) {
         return;
@@ -52,7 +52,7 @@ Java_rocks_stalin_android_app_utils_MP3File_staticInit(JNIEnv *env, jclass type)
 }
 
 JNIEXPORT void JNICALL
-Java_rocks_stalin_android_app_utils_MP3File_close(JNIEnv *env, jobject thiz) {
+Java_rocks_stalin_android_app_decoding_MP3File_close(JNIEnv *env, jobject thiz) {
     File *file = getFile(env, thiz);
 
     __android_log_print(ANDROID_LOG_INFO, TAG, "Closing file");
@@ -66,7 +66,7 @@ Java_rocks_stalin_android_app_utils_MP3File_close(JNIEnv *env, jobject thiz) {
 
 
 JNIEXPORT jbyteArray JNICALL
-Java_rocks_stalin_android_app_utils_MP3File_decodeFrame(JNIEnv *env, jobject thiz) {
+Java_rocks_stalin_android_app_decoding_MP3File_decodeFrameNative(JNIEnv *env, jobject thiz) {
     File *file = getFile(env, thiz);
 
     size_t done;
@@ -79,19 +79,34 @@ Java_rocks_stalin_android_app_utils_MP3File_decodeFrame(JNIEnv *env, jobject thi
     __android_log_print(ANDROID_LOG_WARN, TAG, "Decoded %ld bytes", file->totalRead);
 
     jbyteArray arr = env->NewByteArray(done);
+    /*
+    memset(file->buffer, 0, file->bufferSize);
+    double amplitude = 0.25 * SHRT_MAX;
+    double freq = 1000;
+    unsigned short *sBuffer = (unsigned short *)file->buffer;
+    for(int i = 0; i < file->bufferSize/2; i++) {
+        sBuffer[i] = (unsigned short) (amplitude * sin((2 * 3.14 * i * freq) / 44100));
+    }
+     */
     env->SetByteArrayRegion(arr, 0, done, (const jbyte *) file->buffer);
     return arr;
 }
 
 JNIEXPORT void JNICALL
-Java_rocks_stalin_android_app_utils_MP3File_seek(JNIEnv *env, jobject thiz, jint sample) {
+Java_rocks_stalin_android_app_decoding_MP3File_seek(JNIEnv *env, jobject thiz, jint sample) {
     File *file = getFile(env, thiz);
     mpg123_seek(file->handle, sample, SEEK_SET);
 }
 
 JNIEXPORT jlong JNICALL
-Java_rocks_stalin_android_app_utils_MP3File_tell(JNIEnv *env, jobject thiz) {
+Java_rocks_stalin_android_app_decoding_MP3File_tell(JNIEnv *env, jobject thiz) {
     File *file = getFile(env, thiz);
     return mpg123_tell(file->handle);
+}
+
+JNIEXPORT jlong JNICALL
+Java_rocks_stalin_android_app_decoding_MP3File_tellframe(JNIEnv *env, jobject thiz) {
+    File *file = getFile(env, thiz);
+    return mpg123_tellframe(file->handle);
 }
 }
