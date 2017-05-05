@@ -24,7 +24,7 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
     public static final String TAG = LogHelper.makeLogTag(LocalSoundSink.class);
 
     private Timer timer = new Timer("SMUS - Action Scheduler", true);
-    private TimedAction scheduled = null;
+    private ActionTask scheduled = null;
 
     AudioTrack at;
     private MP3MediaInfo mediaInfo;
@@ -172,33 +172,51 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
 
     @Override
     public boolean onNewAction(final TimedAction action) {
-        long currentTime = System.currentTimeMillis();
-        if(action.getTime() < currentTime) {
+        Clock.Instant now = Clock.getTime();
+        if(action.getTime().before(now)) {
             LogHelper.w(TAG, "Woops, we missed that deadline. Let's just do it now");
             action.execute(at);
             return true;
         }
         //If the new is before the currently scheduled action we need to cancel the current
         //and schedule the new
-        if(scheduled != null && action.getTime() < scheduled.getTime()) {
+        if(scheduled != null && action.getTime().before(scheduled.getTime())) {
             LogHelper.i(TAG, "Evicting currently scheduled task");
-            queue.pushAction(scheduled);
+            queue.pushAction(scheduled.getAction());
             timer.cancel();
             scheduled = null;
         }
-        if(scheduled == null) {
+        //If the scheduled action happened before now it should already have fired
+        if(scheduled == null || scheduled.getTime().before(now)) {
             LogHelper.i(TAG, "Scheduling ", action, " for execution");
-            scheduled = action;
-            timer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    LogHelper.i(TAG, "Executing action ", action);
-                    scheduled = null;
-                    action.execute(at);
-                }
-            }, new Date(action.getTime()));
+            scheduled = new ActionTask(action, at);
+            timer.schedule(scheduled, new Date(action.getTime().inMillis()));
             return true;
         }
         return false;
+    }
+
+    private static class ActionTask extends TimerTask {
+        private TimedAction action;
+        private AudioTrack at;
+
+        public ActionTask(TimedAction action, AudioTrack at) {
+            this.action = action;
+            this.at = at;
+        }
+
+        public TimedAction getAction() {
+            return action;
+        }
+
+        public Clock.Instant getTime() {
+            return action.getTime();
+        }
+
+        @Override
+        public void run() {
+            LogHelper.i(TAG, "Executing action ", action);
+            action.execute(at);
+        }
     }
 }

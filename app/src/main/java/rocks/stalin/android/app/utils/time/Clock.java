@@ -1,6 +1,7 @@
 package rocks.stalin.android.app.utils.time;
 
 import android.support.annotation.NonNull;
+import android.support.v7.view.menu.MenuItemImpl;
 
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -50,6 +51,13 @@ public class Clock {
         public Instant(long millis, long nanos) {
             this.millis = millis;
             this.nanos = nanos;
+        }
+
+        public long inMillis() {
+            long roundedMillis = millis;
+            if(nanos >= NANO_TO_MILLIS/2)
+                roundedMillis += 1;
+            return roundedMillis;
         }
 
         public long getMillis() {
@@ -106,6 +114,11 @@ public class Clock {
             long millis = (nanos / NANO_TO_MILLIS);
             long remainNanos = (nanos % NANO_TO_MILLIS);
             return new Duration(millis, remainNanos);
+        }
+
+        public static Duration fromSeconds(long seconds) {
+            long millis = seconds * MILLIS_TO_SEC;
+            return new Duration(millis, 0);
         }
 
         public long inSeconds() {

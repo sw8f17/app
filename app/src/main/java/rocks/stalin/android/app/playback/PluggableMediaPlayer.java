@@ -87,7 +87,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
     @Override
     public void start() {
         LogHelper.e(TAG, "Starting playback");
-        player.pushAction(new PlayAction(System.currentTimeMillis() + 1000));
+        player.pushAction(new PlayAction(Clock.getTime().add(Clock.Duration.fromSeconds(1))));
         state = PlaybackState.Playing;
 
     }
@@ -95,7 +95,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
     @Override
     public void pause() {
         LogHelper.e(TAG, "Pausing playback");
-        player.pushAction(new PauseAction(System.currentTimeMillis() + 1000));
+        player.pushAction(new PauseAction(Clock.getTime().add(Clock.Duration.fromSeconds(1))));
         state = PlaybackState.Paused;
     }
 

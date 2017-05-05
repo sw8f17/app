@@ -71,10 +71,14 @@ class LocalAudioMixer implements AudioMixer {
             key = buffer.lowerKey(key);
             if(key == null) {
                 LogHelper.w(TAG, "I don't have a frame for the timestamp: ", time, " My earliest is at ", buffer.higherKey(time));
+                mixedBuffer.flip().limit(mixedBuffer.capacity());
                 return mixedBuffer;
             }
         }
 
+        //If any buffer starts in the middle, then it's always the case that its the first one
+        //this is only true because there's no overlap between the frames though, if we do have some
+        //overlap at some point we will have to do some actual mixing - JJ 05/05-2017
         int offset = mediaInfo.bytesPlayedInTime(time.timeBetween(key));
         if(offset % mediaInfo.getSampleSize() != 0) {
             //*
@@ -88,7 +92,11 @@ class LocalAudioMixer implements AudioMixer {
         while(missingBytes > 0) {
             ByteBuffer accurateBuffer = buffer.get(key);
             if(offset > accurateBuffer.limit()) {
+                //It's possible that the last buffer didn't reach, yet another buffer might
+                //intersect later. For now it's pretty unlikely, so i'll just let it skip
+                // - JJ 05/05-2017
                 LogHelper.w(TAG, "The previous buffer didn't reach the start of my request");
+                mixedBuffer.flip().limit(mixedBuffer.capacity());
                 return mixedBuffer;
             }
             int takeFromHere = Math.min(missingBytes, accurateBuffer.limit() - offset);
