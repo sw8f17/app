@@ -39,29 +39,9 @@ public class ServerNetworkService extends Service {
     public void onCreate() {
         super.onCreate();
 
-        WifiP2pManager manager = getSystemService(WifiP2pManager.class);
-        server = new WifiP2PMessageServer(manager);
-        server.initialize(this);
     }
 
     public void startServer() {
-        server.start(new WifiP2PMessageServer.ClientListener() {
-            @Override
-            public void onNewClient(MessageConnection connection) {
-                Welcome packet = new Welcome.Builder()
-                        .song_name("Darude - Sandstorm")
-                        .build();
-                Welcome packet2 = new Welcome.Builder()
-                        .song_name("Darude - Dankstorm")
-                        .build();
-                try {
-                    connection.send(packet, Welcome.class);
-                    connection.send(packet2, Welcome.class);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
     }
 
     public class LocalBinder extends Binder {

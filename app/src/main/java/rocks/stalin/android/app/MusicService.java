@@ -17,13 +17,11 @@
 package rocks.stalin.android.app;
 
 import android.app.PendingIntent;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
+import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
 import android.support.annotation.NonNull;
@@ -40,23 +38,23 @@ import com.google.android.gms.cast.framework.CastSession;
 import com.google.android.gms.cast.framework.SessionManager;
 import com.google.android.gms.cast.framework.SessionManagerListener;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
+import rocks.stalin.android.app.network.MessageConnection;
+import rocks.stalin.android.app.network.WifiP2PMessageServer;
 import rocks.stalin.android.app.playback.CastPlayback;
-import rocks.stalin.android.app.playback.LocalPlayback;
+import rocks.stalin.android.app.playback.RemotePlayback;
 import rocks.stalin.android.app.playback.Playback;
 import rocks.stalin.android.app.playback.PlaybackManager;
 import rocks.stalin.android.app.playback.QueueManager;
 import rocks.stalin.android.app.ui.NowPlayingActivity;
 import rocks.stalin.android.app.utils.LogHelper;
 
-import static rocks.stalin.android.app.ServerNetworkService.CLIENT_HOST_NAME;
-import static rocks.stalin.android.app.ServerNetworkService.CLIENT_PORT_NAME;
-import static rocks.stalin.android.app.ServerNetworkService.MODE_CLIENT;
 import static rocks.stalin.android.app.ServerNetworkService.MODE_NAME;
 import static rocks.stalin.android.app.ServerNetworkService.MODE_SERVER;
 import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_EMPTY_ROOT;
@@ -100,7 +98,7 @@ import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_ROOT;
  *
  */
 public class MusicService extends MediaBrowserServiceCompat implements
-        PlaybackManager.PlaybackServiceCallback {
+        PlaybackManager.PlaybackServiceCallback, WifiP2PMessageServer.ClientListener {
 
     private static final String TAG = LogHelper.makeLogTag(MusicService.class);
 
@@ -134,9 +132,9 @@ public class MusicService extends MediaBrowserServiceCompat implements
     private SessionManager mCastSessionManager;
     private SessionManagerListener<CastSession> mCastSessionManagerListener;
 
-    private ServerNetworkService networkService;
-    private boolean hasNetworkService;
-    private boolean networkServiceStarted;
+    private RemotePlayback remotePlayback;
+
+    WifiP2PMessageServer server;
 
     /*
      * (non-Javadoc)
@@ -182,9 +180,16 @@ public class MusicService extends MediaBrowserServiceCompat implements
                     }
                 });
 
-        LocalPlayback playback = new LocalPlayback(this, mMusicProvider);
+        LogHelper.i(TAG, "Starting manager");
+
+        WifiP2pManager manager = getSystemService(WifiP2pManager.class);
+        server = new WifiP2PMessageServer(manager);
+        server.initialize(this);
+        server.start(this);
+
+        remotePlayback = new RemotePlayback(this, mMusicProvider);
         mPlaybackManager = new PlaybackManager(this, getResources(), mMusicProvider, queueManager,
-                playback);
+                remotePlayback);
 
         // Start a new MediaSession
         mSession = new MediaSessionCompat(this, "MusicService");
@@ -218,41 +223,6 @@ public class MusicService extends MediaBrowserServiceCompat implements
         mMediaRouter = MediaRouter.getInstance(getApplicationContext());
     }
 
-    private abstract class NetworkServiceAction {
-        public abstract void run(ServerNetworkService service);
-    }
-
-    private class NetworkServiceStartServerAction extends NetworkServiceAction{
-        public void run(ServerNetworkService service) {
-            service.startServer();
-        }
-    }
-
-    private class NetworkServiceConnection implements ServiceConnection {
-
-        private NetworkServiceAction action;
-
-        public NetworkServiceConnection(NetworkServiceAction action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-            ServerNetworkService.LocalBinder binder = (ServerNetworkService.LocalBinder) iBinder;
-            action.run(binder.getService());
-            networkService = binder.getService();
-            hasNetworkService = true;
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            networkService = null;
-            hasNetworkService = false;
-        }
-    }
-
-    private ServiceConnection connection;
-
     /**
      * (non-Javadoc)
      * @see android.app.Service#onStartCommand(android.content.Intent, int, int)
@@ -271,19 +241,6 @@ public class MusicService extends MediaBrowserServiceCompat implements
             } else {
                 // Try to handle the intent as a media button event wrapped by MediaButtonReceiver
                 MediaButtonReceiver.handleIntent(mSession, startIntent);
-            }
-            String mode = startIntent.getStringExtra(MODE_NAME);
-            if (!networkServiceStarted) {
-                Intent i = new Intent(this, ServerNetworkService.class);
-                NetworkServiceAction networkAction;
-                if (mode.equals(MODE_SERVER)) {
-                    networkAction = new NetworkServiceStartServerAction();
-                } else {
-                    throw new RuntimeException("Unknown mode");
-                }
-                connection = new NetworkServiceConnection(networkAction);
-                networkServiceStarted = true;
-                bindService(i, connection, Context.BIND_AUTO_CREATE);
             }
         }
         // Reset the delay handler to enqueue a message to stop the service if
@@ -312,6 +269,12 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
         mDelayedStopHandler.removeCallbacksAndMessages(null);
         mSession.release();
+
+        try {
+            server.stop();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed destroying WifiP2pServer");
+        }
     }
 
     @Override
@@ -397,6 +360,11 @@ public class MusicService extends MediaBrowserServiceCompat implements
         mSession.setPlaybackState(newState);
     }
 
+    @Override
+    public void onNewClient(MessageConnection connection) {
+        remotePlayback.addClient(connection);
+    }
+
     /**
      * A simple handler that stops the service if playback is not active (playing)
      */
@@ -432,9 +400,9 @@ public class MusicService extends MediaBrowserServiceCompat implements
             LogHelper.d(TAG, "onSessionEnded");
             mSessionExtras.remove(EXTRA_CONNECTED_CAST);
             mSession.setExtras(mSessionExtras);
-            Playback playback = new LocalPlayback(MusicService.this, mMusicProvider);
+
             mMediaRouter.setMediaSessionCompat(null);
-            mPlaybackManager.switchToPlayback(playback, false);
+            mPlaybackManager.switchToPlayback(remotePlayback, false);
         }
 
         @Override

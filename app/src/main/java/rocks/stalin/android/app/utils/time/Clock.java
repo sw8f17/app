@@ -46,9 +46,9 @@ public class Clock {
 
     public static class Instant implements Comparable<Instant> {
         private long millis;
-        private long nanos;
+        private int nanos;
 
-        public Instant(long millis, long nanos) {
+        public Instant(long millis, int nanos) {
             this.millis = millis;
             this.nanos = nanos;
         }
@@ -64,13 +64,13 @@ public class Clock {
             return millis;
         }
 
-        public long getNanos() {
+        public int getNanos() {
             return nanos;
         }
 
         public Duration timeBetween(Instant o) {
             long newMillis = Math.abs(millis - o.getMillis());
-            long newNanos = Math.abs(nanos - o.getNanos());
+            int newNanos = (int) Math.abs(nanos - o.getNanos());
             return new Duration(newMillis, newNanos);
         }
 
@@ -78,7 +78,7 @@ public class Clock {
             long newNanos = nanos + expectedEnd.getNanos();
             long newMillis = millis + expectedEnd.getMillis() + (newNanos / NANO_TO_MILLIS);
             newNanos %= NANO_TO_MILLIS;
-            return new Instant(newMillis, newNanos);
+            return new Instant(newMillis, (int) newNanos);
         }
 
         public boolean before(Instant o) {
@@ -103,16 +103,16 @@ public class Clock {
 
     public static class Duration {
         private long millis;
-        private long nanos;
+        private int nanos;
 
-        public Duration(long seconds, long nanos) {
+        public Duration(long seconds, int nanos) {
             this.millis = seconds;
             this.nanos = nanos;
         }
 
         public static Duration FromNanos(long nanos) {
             long millis = (nanos / NANO_TO_MILLIS);
-            long remainNanos = (nanos % NANO_TO_MILLIS);
+            int remainNanos = (int) (nanos % NANO_TO_MILLIS);
             return new Duration(millis, remainNanos);
         }
 
@@ -143,7 +143,7 @@ public class Clock {
             return millis;
         }
 
-        public long getNanos() {
+        public int getNanos() {
             return nanos;
         }
 
@@ -151,7 +151,7 @@ public class Clock {
             long newNanos = nanos * times;
             long newMillis = millis * times + (newNanos / NANO_TO_MILLIS);
             newNanos %= NANO_TO_MILLIS;
-            return new Duration(newMillis, newNanos);
+            return new Duration(newMillis, (int) newNanos);
         }
 
         @Override

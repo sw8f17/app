@@ -1,7 +1,5 @@
 package rocks.stalin.android.app.network;
 
-import android.os.AsyncTask;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -47,17 +45,8 @@ public class ServerListener {
 
     public void stop() throws IOException {
         running = false;
-        new AsyncTask<Object, Object, Object>() {
-            @Override
-            protected Object doInBackground(Object[] objects) {
-                try {
-                    serverSocket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                return null;
-            }
-        }.execute();
+        thread.interrupt();
+        serverSocket.close();
     }
 
     public interface NewSocketListener {
