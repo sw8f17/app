@@ -13,21 +13,21 @@ public class DurationTest {
     public void fromNanos_11() throws Exception {
         Clock.Duration d = Clock.Duration.FromNanos(1000001);
         assertThat(d.getMillis(), equalTo(1L));
-        assertThat(d.getNanos(), equalTo(1L));
+        assertThat(d.getNanos(), equalTo(1));
     }
 
     @Test
     public void fromNanos_22() throws Exception {
         Clock.Duration d = Clock.Duration.FromNanos(2000002);
         assertThat(d.getMillis(), equalTo(2L));
-        assertThat(d.getNanos(), equalTo(2L));
+        assertThat(d.getNanos(), equalTo(2));
     }
 
     @Test
     public void fromNanos_noMillis() throws Exception {
         Clock.Duration d = Clock.Duration.FromNanos(2);
         assertThat(d.getMillis(), equalTo(0L));
-        assertThat(d.getNanos(), equalTo(2L));
+        assertThat(d.getNanos(), equalTo(2));
     }
 
     @Test
