@@ -4,6 +4,8 @@ import android.util.SparseArray;
 
 import com.squareup.wire.Message;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -22,6 +24,8 @@ public class MessageConnection {
     private static final String TAG = LogHelper.makeLogTag(MessageConnection.class);
 
     private Socket socket;
+    DataInputStream dis;
+    DataOutputStream dos;
     private boolean running;
     private Thread processThread;
 
@@ -29,6 +33,15 @@ public class MessageConnection {
 
     public MessageConnection(Socket socket) {
         this.socket = socket;
+        try {
+            InputStream stream = socket.getInputStream();
+            dis = new DataInputStream(stream);
+
+            OutputStream ostream = socket.getOutputStream();
+            dos = new DataOutputStream(ostream);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void start() {
@@ -38,12 +51,10 @@ public class MessageConnection {
             public void run() {
                 while(running) {
                     try {
-                        InputStream stream = socket.getInputStream();
-                        int type = stream.read();
-                        int length = stream.read();
+                        int type = dis.readByte();
+                        int length = dis.readInt();
                         byte[] data = new byte[length];
-                        int readBytes = stream.read(data, 0, length);
-                        LogHelper.d(TAG, "Message retrieved, bytes read: ", readBytes);
+                        dis.readFully(data, 0, length);
 
                         processMessage(type, data);
                     } catch (IOException e) {
@@ -96,6 +107,9 @@ public class MessageConnection {
                 message = SessionInfo.ADAPTER.decode(data);
                 handler = handlers.get(type);
                 break;
+            default:
+                LogHelper.w(TAG, "Received unknown message of type ", type);
+                return;
         }
         if(handler != null && message != null) {
             /**
@@ -107,10 +121,10 @@ public class MessageConnection {
 
     public <M extends Message<M, B>, B extends Message.Builder<M, B>> void send(M packet, Class<M> clazz) throws IOException {
         byte[] packetData = packet.adapter().encode(packet);
-        OutputStream stream = socket.getOutputStream();
-        stream.write(MessageRegistry.getInstance().getID(clazz));
-        stream.write(packetData.length);
-        stream.write(packetData);
+        dos.writeByte(MessageRegistry.getInstance().getID(clazz));
+        dos.writeInt(packetData.length);
+        dos.write(packetData);
+        dos.flush();
     }
 
     public interface MessageListener<M extends Message<M, B>, B extends Message.Builder<M, B>> {

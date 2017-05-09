@@ -5,6 +5,7 @@ import android.content.IntentFilter;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
+import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
@@ -14,15 +15,27 @@ import android.os.Looper;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 import rocks.stalin.android.app.ClientNetworkService;
+import rocks.stalin.android.app.decoding.MP3Encoding;
+import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.model.Group;
+import rocks.stalin.android.app.playback.LocalAudioMixer;
+import rocks.stalin.android.app.playback.LocalSoundSink;
+import rocks.stalin.android.app.playback.actions.PlayAction;
+import rocks.stalin.android.app.proto.Music;
+import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.time.Clock;
 
 /**
  * Created by delusional on 4/13/17.
@@ -44,6 +57,29 @@ public class WifiP2PMessageClient {
 
     public void initialize(Context context) {
         channel = p2pManager.initialize(context, Looper.getMainLooper(), null);
+
+        try {
+            Method method = WifiP2pManager.class.getDeclaredMethod("deletePersistentGroup", WifiP2pManager.Channel.class, int.class, WifiP2pManager.ActionListener.class);
+            for (int netid = 0; netid < 32; netid++) {
+                try {
+                    method.invoke(p2pManager, channel, netid, new WifiP2pManager.ActionListener() {
+                        @Override
+                        public void onSuccess() {
+                            LogHelper.i(TAG, "Removed group");
+                        }
+
+                        @Override
+                        public void onFailure(int reason) {
+                            LogHelper.i(TAG, "Failure while removing group");
+                        }
+                    });
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    LogHelper.w(TAG, "Error trying to call hidden method: deletePersistentGroup");
+                }
+            }
+        } catch (NoSuchMethodException e) {
+            LogHelper.w(TAG, "No method called deletePersistentGroup");
+        }
     }
 
     public void discoverServers(final DiscoverListener listener) {
@@ -64,6 +100,7 @@ public class WifiP2PMessageClient {
         };
 
         p2pManager.setDnsSdResponseListeners(channel, servListener, txtListener);
+        p2pManager.removeGroup(channel, null);
         p2pManager.addServiceRequest(channel, request, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
@@ -96,6 +133,10 @@ public class WifiP2PMessageClient {
         //We don't need to discover when we are connected
         stopDiscovery();
 
+        final LocalAudioMixer localAudioMixer = new LocalAudioMixer(new MP3MediaInfo(44100, 1, 0, MP3Encoding.UNSIGNED16), Clock.getTime());
+        LocalSoundSink sink = new LocalSoundSink(localAudioMixer);
+        sink.change(new MP3MediaInfo(44100, 1, 0, MP3Encoding.UNSIGNED16));
+
         WifiDirectBroadcastReceiver rec =
                 new WifiDirectBroadcastReceiver(p2pManager, channel, new WifiP2pManager.ConnectionInfoListener() {
                     @Override
@@ -106,13 +147,32 @@ public class WifiP2PMessageClient {
                             @Override
                             public void run() {
                                 try {
-                                    Socket socket = new Socket(wifiP2pInfo.groupOwnerAddress, port);
+                                    Socket socket = new Socket();
+                                    socket.setSoTimeout(0);
+                                    socket.connect(new InetSocketAddress(wifiP2pInfo.groupOwnerAddress, port));
                                     MessageConnection connection = new MessageConnection(socket);
                                     connection.start();
                                     connection.addHandler(Welcome.class, new MessageConnection.MessageListener<Welcome, Welcome.Builder>() {
                                         @Override
                                         public void packetReceived(Welcome message) {
                                             LogHelper.e(TAG, "DATA: ", message.song_name);
+                                        }
+                                    });
+                                    connection.addHandler(PlayCommand.class, new MessageConnection.MessageListener<PlayCommand, PlayCommand.Builder>() {
+                                        @Override
+                                        public void packetReceived(PlayCommand message) {
+                                            LogHelper.e(TAG, "PLAY: ", message.playtime.millis);
+                                            Clock.Instant time = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
+                                            PlayAction action = new PlayAction(time);
+                                            localAudioMixer.pushAction(action);
+                                        }
+                                    });
+                                    connection.addHandler(Music.class, new MessageConnection.MessageListener<Music, Music.Builder>() {
+                                        @Override
+                                        public void packetReceived(Music message) {
+                                            LogHelper.e(TAG, "MUSIC: ", message.playtime.millis);
+                                            Clock.Instant playTime = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
+                                            localAudioMixer.pushFrame(playTime, message.data.asByteBuffer());
                                         }
                                     });
                                 } catch (IOException e) {
@@ -131,6 +191,7 @@ public class WifiP2PMessageClient {
         WifiP2pConfig config = new WifiP2pConfig();
         config.deviceAddress = host;
         config.wps.setup =  WpsInfo.PBC;
+        config.groupOwnerIntent = 0;
         p2pManager.connect(channel, config, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {

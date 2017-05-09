@@ -60,7 +60,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
     public void prepareAsync() {
         state = PlaybackState.Stopped;
 
-        player = new LocalAudioMixer(mediaInfo, System.currentTimeMillis());
+        player = new LocalAudioMixer(mediaInfo, Clock.getTime());
         double frameSizeInSamples = mediaInfo.frameSize / (mediaInfo.encoding.getSampleSize() * mediaInfo.channels);
         double frameTime = (frameSizeInSamples / mediaInfo.sampleRate) * 1000;
 
@@ -74,11 +74,13 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     @Override
     public void reset() {
-        sink.reset();
-        currentFile.close();
-        currentFile = null;
-        state = PlaybackState.Stopped;
-        feederHandle.cancel(false);
+        if(sink != null) {
+            sink.reset();
+            currentFile.close();
+            currentFile = null;
+            state = PlaybackState.Stopped;
+            feederHandle.cancel(false);
+        }
     }
 
     @Override
@@ -92,7 +94,11 @@ public class PluggableMediaPlayer implements MediaPlayer {
     @Override
     public void start() {
         LogHelper.e(TAG, "Starting playback");
-        player.pushAction(new PlayAction(Clock.getTime().add(Clock.Duration.fromSeconds(1))));
+        PlayAction action = new PlayAction(Clock.getTime().add(Clock.Duration.fromSeconds(1)));
+        player.pushAction(action);
+        for(AudioMixer slave : slaves) {
+            slave.pushAction(action);
+        }
         state = PlaybackState.Playing;
 
     }
@@ -100,7 +106,11 @@ public class PluggableMediaPlayer implements MediaPlayer {
     @Override
     public void pause() {
         LogHelper.e(TAG, "Pausing playback");
-        player.pushAction(new PauseAction(Clock.getTime().add(Clock.Duration.fromSeconds(1))));
+        PauseAction action = new PauseAction(Clock.getTime().add(Clock.Duration.fromSeconds(1)));
+        player.pushAction(action);
+        for(AudioMixer slave : slaves) {
+            slave.pushAction(action);
+        }
         state = PlaybackState.Paused;
     }
 
@@ -169,7 +179,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     private static class MediaPlayerFeeder implements Runnable {
         private static final String TAG = LogHelper.makeLogTag(MediaPlayerFeeder.class);
-        public static final int PRELOAD_SIZE = 2;
+        public static final int PRELOAD_SIZE = 200;
 
         private MP3File file;
         private MP3MediaInfo mediaInfo;

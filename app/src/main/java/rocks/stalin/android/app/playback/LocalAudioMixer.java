@@ -13,18 +13,18 @@ import rocks.stalin.android.app.utils.time.Clock;
  * Created by delusional on 5/3/17.
  */
 
-class LocalAudioMixer implements AudioMixer {
+public class LocalAudioMixer implements AudioMixer {
     private static final String TAG = LogHelper.makeLogTag(LocalAudioMixer.class);
 
     private TreeMap<Clock.Instant, ByteBuffer> buffer;
     private PriorityQueue<TimedAction> actions;
-    private long nextSilence = 0;
+    private Clock.Instant nextSilence;
     private long framePosition;
     private MP3MediaInfo mediaInfo;
 
     private NewActionListener newActionListener;
 
-    LocalAudioMixer(MP3MediaInfo mediaInfo, long startTime) {
+    public LocalAudioMixer(MP3MediaInfo mediaInfo, Clock.Instant startTime) {
         buffer = new TreeMap<>();
         actions = new PriorityQueue<>();
 
@@ -40,12 +40,13 @@ class LocalAudioMixer implements AudioMixer {
         return framePosition;
     }
 
-    public long getNextSilence() {
+    public Clock.Instant getNextSilence() {
         return nextSilence;
     }
 
     @Override
     public void pushFrame(Clock.Instant nextTime, ByteBuffer read) {
+        nextSilence = nextSilence.add(mediaInfo.timeToPlayBytes(read.capacity()));
         buffer.put(nextTime, read);
     }
 
@@ -95,7 +96,7 @@ class LocalAudioMixer implements AudioMixer {
                 //It's possible that the last buffer didn't reach, yet another buffer might
                 //intersect later. For now it's pretty unlikely, so i'll just let it skip
                 // - JJ 05/05-2017
-                LogHelper.w(TAG, "The previous buffer didn't reach the start of my request");
+                LogHelper.w(TAG, "The previous buffer didn't reach the start of my request, I did have something at ", key);
                 mixedBuffer.flip().limit(mixedBuffer.capacity());
                 return mixedBuffer;
             }
@@ -103,7 +104,10 @@ class LocalAudioMixer implements AudioMixer {
 
             LogHelper.i(TAG, "Mixing in ", takeFromHere, " bytes at ", mixedBuffer.position(), " from ", key);
 
-            mixedBuffer.put(accurateBuffer.array(), offset, takeFromHere);
+            ByteBuffer mine = accurateBuffer.duplicate();
+            mine.position(offset);
+            mine.limit(offset + takeFromHere);
+            mixedBuffer.put(mine);
 
             missingBytes -= takeFromHere;
             framePosition += takeFromHere / mediaInfo.getSampleSize();

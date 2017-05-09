@@ -510,9 +510,10 @@ public class RemotePlayback implements Playback, AudioManager.OnAudioFocusChange
     }
 
     public void addClient(MessageConnection connection) {
-        if(mState != PlaybackStateCompat.STATE_STOPPED)
+        if(mState != PlaybackStateCompat.STATE_STOPPED && mState != PlaybackStateCompat.STATE_NONE)
             throw new RuntimeException("You can't add a client while playing... yet");
         RemoteMixer remoteMixer = new RemoteMixer(connection);
+        createMediaPlayerIfNeeded();
         mediaPlayer.addMixer(remoteMixer);
     }
 }

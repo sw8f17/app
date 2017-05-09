@@ -16,7 +16,7 @@ Java_rocks_stalin_android_app_utils_time_Clock_staticInit(JNIEnv *env, jclass ty
     if(fields.timeClazz == NULL)
         return;
 
-    fields.timeCons = env->GetMethodID(fields.timeClazz, "<init>", "(JJ)V");
+    fields.timeCons = env->GetMethodID(fields.timeClazz, "<init>", "(JI)V");
     if(fields.timeCons == NULL)
         return;
 }

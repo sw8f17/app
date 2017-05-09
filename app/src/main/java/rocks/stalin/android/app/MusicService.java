@@ -43,6 +43,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
+import okio.ByteString;
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
 import rocks.stalin.android.app.network.MessageConnection;
@@ -52,6 +53,10 @@ import rocks.stalin.android.app.playback.RemotePlayback;
 import rocks.stalin.android.app.playback.Playback;
 import rocks.stalin.android.app.playback.PlaybackManager;
 import rocks.stalin.android.app.playback.QueueManager;
+import rocks.stalin.android.app.proto.Music;
+import rocks.stalin.android.app.proto.PlayCommand;
+import rocks.stalin.android.app.proto.Timestamp;
+import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.ui.NowPlayingActivity;
 import rocks.stalin.android.app.utils.LogHelper;
 
@@ -184,8 +189,12 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
         WifiP2pManager manager = getSystemService(WifiP2pManager.class);
         server = new WifiP2PMessageServer(manager);
-        server.initialize(this);
-        server.start(this);
+        server.initialize(this, new WifiP2PMessageServer.InitializedListener() {
+            @Override
+            public void onInitialized() {
+                server.start(MusicService.this);
+            }
+        });
 
         remotePlayback = new RemotePlayback(this, mMusicProvider);
         mPlaybackManager = new PlaybackManager(this, getResources(), mMusicProvider, queueManager,

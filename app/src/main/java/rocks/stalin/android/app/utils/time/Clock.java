@@ -39,7 +39,7 @@ public class Clock {
         timeLock.readLock().lock();
         long nanosSinceLast = nanos - lastNanos;
         long milli = (nanosSinceLast / NANO_TO_MILLIS) + lastMillis;
-        long remainNano = (nanosSinceLast % NANO_TO_MILLIS);
+        int remainNano = (int) (nanosSinceLast % NANO_TO_MILLIS);
         timeLock.readLock().unlock();
         return new Instant(milli, remainNano);
     }
@@ -94,10 +94,7 @@ public class Clock {
 
         @Override
         public String toString() {
-            return "Instant{" +
-                    "millis=" + millis +
-                    ", nanos=" + nanos +
-                    '}';
+            return millis + ":" + nanos;
         }
     }
 
@@ -156,10 +153,7 @@ public class Clock {
 
         @Override
         public String toString() {
-            return "Duration{" +
-                    "millis=" + millis +
-                    ", nanos=" + nanos +
-                    '}';
+            return millis + ":" + nanos + "D";
         }
     }
 }
