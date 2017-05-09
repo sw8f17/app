@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package rocks.stalin.scotty;
+
+import "timestamp.proto";
+import "metadata.proto";
+
+option java_package = "rocks.stalin.android.app.proto";
+
+message SongChangeCommand {
+    // Time at which to start the playback
+    Timestamp playtime = 1;
+
+    // The metadata of the song
+    Metadata songmetadata = 2;
+}

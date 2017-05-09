@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package rocks.stalin.scotty;
+
+option java_package = "rocks.stalin.android.app.proto";
+
+message SessionInfo {
+    // Title of the session
+    string title = 1;
+
+    //TODO: Make this a Map<> if we need a key-value pair.
+    // The "names" of the devices which are part of the session.
+    repeated string connectedDevices = 2;
+}

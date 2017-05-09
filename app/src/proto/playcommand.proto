@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package rocks.stalin.scotty;
+
+import "timestamp.proto";
+
+option java_package = "rocks.stalin.android.app.proto";
+
+message PlayCommand {
+    // Time at which to start the playback
+    Timestamp playtime = 1;
+
+    // Location of the "play head" which is the next to play
+    int64 playhead = 2;
+}

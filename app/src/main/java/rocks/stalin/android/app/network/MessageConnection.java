@@ -10,6 +10,11 @@ import java.io.OutputStream;
 import java.net.Socket;
 
 import rocks.stalin.android.app.proto.Music;
+import rocks.stalin.android.app.proto.PauseCommand;
+import rocks.stalin.android.app.proto.PlayCommand;
+import rocks.stalin.android.app.proto.SeekCommand;
+import rocks.stalin.android.app.proto.SessionInfo;
+import rocks.stalin.android.app.proto.SongChangeCommand;
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
 
@@ -69,6 +74,26 @@ public class MessageConnection {
                 break;
             case 2:
                 message = Music.ADAPTER.decode(data);
+                handler = handlers.get(type);
+                break;
+            case 3:
+                message = PlayCommand.ADAPTER.decode(data);
+                handler = handlers.get(type);
+                break;
+            case 4:
+                message = PauseCommand.ADAPTER.decode(data);
+                handler = handlers.get(type);
+                break;
+            case 5:
+                message = SeekCommand.ADAPTER.decode(data);
+                handler = handlers.get(type);
+                break;
+            case 6:
+                message = SongChangeCommand.ADAPTER.decode(data);
+                handler = handlers.get(type);
+                break;
+            case 7:
+                message = SessionInfo.ADAPTER.decode(data);
                 handler = handlers.get(type);
                 break;
         }

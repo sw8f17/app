@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package rocks.stalin.scotty;
+
+import "timestamp.proto";
+
+option java_package = "rocks.stalin.android.app.proto";
+
+message SeekCommand {
+    // Time at which to start the seek
+    Timestamp playtime = 1;
+
+    // The location of the "play head" to seek to
+    int64 playhead = 2;
+}
