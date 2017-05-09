@@ -50,9 +50,16 @@ public class Clock {
 
         public Instant(long millis, int nanos) {
             this.millis = millis;
+            if(nanos / NANO_TO_MILLIS > 0)
+                throw new IllegalArgumentException("The nanos given was greater than one millisecond");
+
             this.nanos = nanos;
         }
 
+        /**
+         * Rounds the instant to the nearest millis, 500.000 rounds up.
+         * @return the instant as millis rounded.
+         */
         public long inMillis() {
             long roundedMillis = millis;
             if(nanos >= NANO_TO_MILLIS/2)
@@ -109,8 +116,11 @@ public class Clock {
         private long millis;
         private int nanos;
 
-        public Duration(long seconds, int nanos) {
-            this.millis = seconds;
+        public Duration(long millis, int nanos) {
+            this.millis = millis;
+            if(nanos / NANO_TO_MILLIS > 0)
+                throw new IllegalArgumentException("The nanos given was greater than one millisecond");
+
             this.nanos = nanos;
         }
 

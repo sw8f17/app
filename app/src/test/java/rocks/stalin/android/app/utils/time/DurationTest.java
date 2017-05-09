@@ -1,5 +1,6 @@
 package rocks.stalin.android.app.utils.time;
 
+import org.hamcrest.core.IsEqual;
 import org.junit.Test;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -96,4 +97,9 @@ public class DurationTest {
         assertThat(d.multiply(5).inNanos(), equalTo(5000000L));
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void nanosTooBig() throws Exception {
+        new Clock.Duration(0L, 1000001);
+
+    }
 }
