@@ -81,6 +81,13 @@ public class Clock {
             return new Instant(newMillis, (int) newNanos);
         }
 
+        public Instant sub(Duration expectedEnd) {
+            long newNanos = nanos - expectedEnd.getNanos();
+            long newMillis = (millis - expectedEnd.getMillis()) - (newNanos < 0 ? 1 : 0);
+            newNanos = newNanos < 0 ? NANO_TO_MILLIS + newNanos : newNanos;
+            return new Instant(newMillis, (int) newNanos);
+        }
+
         public boolean before(Instant o) {
             return compareTo(o) < 0;
         }
@@ -107,15 +114,19 @@ public class Clock {
             this.nanos = nanos;
         }
 
+        public static Duration fromSeconds(long seconds) {
+            long millis = seconds * MILLIS_TO_SEC;
+            return fromMillis(millis);
+        }
+
+        public static Duration fromMillis(long millis) {
+            return new Duration(millis, 0);
+        }
+
         public static Duration FromNanos(long nanos) {
             long millis = (nanos / NANO_TO_MILLIS);
             int remainNanos = (int) (nanos % NANO_TO_MILLIS);
             return new Duration(millis, remainNanos);
-        }
-
-        public static Duration fromSeconds(long seconds) {
-            long millis = seconds * MILLIS_TO_SEC;
-            return new Duration(millis, 0);
         }
 
         public long inSeconds() {

@@ -16,6 +16,7 @@ import rocks.stalin.android.app.proto.Music;
 import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.proto.Timestamp;
 import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.NetworkHelper;
 import rocks.stalin.android.app.utils.time.Clock;
 
 /**
@@ -36,9 +37,11 @@ class RemoteMixer implements AudioMixer {
 
     @Override
     public void pushFrame(Clock.Instant nextTime, ByteBuffer read) {
+        Clock.Instant correctedNextTime = nextTime.add(NetworkHelper.offset);
+        LogHelper.i(TAG, "Corrected time ", nextTime, " by ", NetworkHelper.offset, " to ", correctedNextTime);
         Timestamp timestampMessage = new Timestamp.Builder()
-                .millis(nextTime.getMillis())
-                .nanos(nextTime.getNanos())
+                .millis(correctedNextTime.getMillis())
+                .nanos(correctedNextTime.getNanos())
                 .build();
         Music musicMessage = new Music.Builder()
                 .data(ByteString.of(read.array(), read.position(), read.limit()))

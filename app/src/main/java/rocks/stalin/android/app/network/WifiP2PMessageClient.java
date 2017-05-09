@@ -35,6 +35,7 @@ import rocks.stalin.android.app.proto.Music;
 import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.NetworkHelper;
 import rocks.stalin.android.app.utils.time.Clock;
 
 /**
@@ -163,16 +164,19 @@ public class WifiP2PMessageClient {
                                         public void packetReceived(PlayCommand message) {
                                             LogHelper.e(TAG, "PLAY: ", message.playtime.millis);
                                             Clock.Instant time = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
-                                            PlayAction action = new PlayAction(time);
+                                            Clock.Instant correctedTime = time.sub(NetworkHelper.offset);
+                                            LogHelper.i(TAG, "Corrected time ", time, " by ", NetworkHelper.offset, " to ", correctedTime);
+                                            PlayAction action = new PlayAction(correctedTime);
                                             localAudioMixer.pushAction(action);
                                         }
                                     });
                                     connection.addHandler(Music.class, new MessageConnection.MessageListener<Music, Music.Builder>() {
                                         @Override
                                         public void packetReceived(Music message) {
-                                            LogHelper.e(TAG, "MUSIC: ", message.playtime.millis);
                                             Clock.Instant playTime = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
-                                            localAudioMixer.pushFrame(playTime, message.data.asByteBuffer());
+                                            Clock.Instant correctedPlayTime = playTime.sub(NetworkHelper.offset);
+                                            LogHelper.i(TAG, "Corrected time ", playTime, " by ", NetworkHelper.offset, " to ", correctedPlayTime);
+                                            localAudioMixer.pushFrame(correctedPlayTime, message.data.asByteBuffer());
                                         }
                                     });
                                 } catch (IOException e) {

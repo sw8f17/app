@@ -24,6 +24,7 @@ import android.support.annotation.Nullable;
 import java.util.concurrent.ExecutionException;
 
 import rocks.stalin.android.app.network.SntpOffsetTask;
+import rocks.stalin.android.app.utils.time.Clock;
 
 /**
  * Generic reusable network methods.
@@ -38,6 +39,17 @@ public class NetworkHelper {
             context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
         return (networkInfo != null && networkInfo.isConnected());
+    }
+
+    public static Clock.Duration offset;
+    static {
+        offset = getOffset();
+    }
+
+    @Nullable
+    public static Clock.Duration getOffset() {
+        Long offset = clockOffset();
+        return offset == null ? null : Clock.Duration.fromMillis(offset);
     }
 
     @Nullable

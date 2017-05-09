@@ -4,11 +4,18 @@ import android.os.AsyncTask;
 import android.os.SystemClock;
 import android.util.Log;
 
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+
+import rocks.stalin.android.app.utils.LogHelper;
 
 public class SntpOffsetTask extends AsyncTask<Void, Void, Long> {
+    private static final String TAG = LogHelper.makeLogTag(SntpOffsetTask.class);
 
     private static final int ORIGINATE_TIME_OFFSET = 24;
     private static final int RECEIVE_TIME_OFFSET = 32;
@@ -19,13 +26,11 @@ public class SntpOffsetTask extends AsyncTask<Void, Void, Long> {
     private static final int NTP_MODE_CLIENT = 3;
     private static final int NTP_VERSION = 3;
     private static final int NTP_TIMEOUT = 10000;
-    private static final String NTP_POOL = "0.europe.pool.ntp.org";
-
+    private static final String NTP_POOL = "0.dk.pool.ntp.org";
 
     // Number of seconds between Jan 1, 1900 and Jan 1, 1970
     // 70 years plus 17 leap days
     private static final long OFFSET_1900_TO_1970 = ((365L * 70L) + 17L) * 24L * 60L * 60L;
-
 
     @Override
     public Long doInBackground(Void ... params) {
@@ -62,8 +67,16 @@ public class SntpOffsetTask extends AsyncTask<Void, Void, Long> {
             long transmitTime = readTimeStamp(buffer, TRANSMIT_TIME_OFFSET);
 
             clockOffset = ((receiveTime - originateTime) + (transmitTime - responseTime))/2;
-        } catch (Exception e) {
-            if (false) Log.d("MEME", "request time failed: " + e);
+        } catch (UnknownHostException e) {
+            Log.e(TAG, "Unknown ntp server host");
+            return null;
+        } catch (SocketException e) {
+            Log.e(TAG, "Error while reading ntp time");
+            e.printStackTrace();
+            return null;
+        } catch (IOException e) {
+            Log.e(TAG, "Generic problem reading ntp time");
+            e.printStackTrace();
             return null;
         } finally {
             if (socket != null) {

@@ -59,6 +59,8 @@ public class MessageConnection {
                         processMessage(type, data);
                     } catch (IOException e) {
                         e.printStackTrace();
+                        LogHelper.e(TAG, "Error reading from master device");
+                        running = false;
                     }
                 }
             }
