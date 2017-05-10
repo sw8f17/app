@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 import rocks.stalin.android.app.decoding.MP3Decoder;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
+import rocks.stalin.android.app.playback.actions.MediaChangeAction;
 import rocks.stalin.android.app.playback.actions.PauseAction;
 import rocks.stalin.android.app.playback.actions.PlayAction;
 import rocks.stalin.android.app.utils.LogHelper;
@@ -100,7 +101,10 @@ public class PluggableMediaPlayer implements MediaPlayer {
         currentFile.seek((int) pauseSample);
 
         feeder.setStartTime(startTime);
-        feederHandle = service.scheduleAtFixedRate(feeder, 0, mediaInfo.timeToPlayBytes(mediaInfo.frameSize).inMillis(), TimeUnit.MILLISECONDS);
+        //This may drift over time, but since we are mostly playing short tracks
+        //it might be ok? -JJ 10/05-2017
+        long period = mediaInfo.timeToPlayBytes(mediaInfo.frameSize).inMillis();
+        feederHandle = service.scheduleAtFixedRate(feeder, 0, period, TimeUnit.MILLISECONDS);
 
         PlayAction action = new PlayAction(startTime);
         player.pushAction(action);
@@ -115,15 +119,18 @@ public class PluggableMediaPlayer implements MediaPlayer {
     public void pause() {
         LogHelper.e(TAG, "Pausing playback");
         Clock.Instant pauseTime = Clock.getTime();
+
         PauseAction action = new PauseAction(pauseTime);
+
         player.pushAction(action);
         for(AudioMixer slave : slaves) {
             slave.pushAction(action);
         }
+
         state = PlaybackState.Paused;
+
         pauseSample = feeder.tellAt(pauseTime);
         feederHandle.cancel(true);
-        player.flush();
     }
 
     @Override
@@ -140,6 +147,11 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
         currentFile = decoder.open(mContext, uriSource);
         mediaInfo = currentFile.getMediaInfo();
+
+        Clock.Instant time = Clock.getTime();
+        MediaChangeAction action = new MediaChangeAction(time, mediaInfo);
+
+        player.pushAction(action);
 
         state = PlaybackState.Stopped;
     }

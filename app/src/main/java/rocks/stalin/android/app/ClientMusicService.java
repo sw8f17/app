@@ -17,8 +17,10 @@ import rocks.stalin.android.app.network.WifiP2PMessageClient;
 import rocks.stalin.android.app.playback.LocalAudioMixer;
 import rocks.stalin.android.app.playback.LocalSoundSink;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
+import rocks.stalin.android.app.playback.actions.PauseAction;
 import rocks.stalin.android.app.playback.actions.PlayAction;
 import rocks.stalin.android.app.proto.Music;
+import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
@@ -84,10 +86,18 @@ public class ClientMusicService extends Service {
                     connection.addHandler(PlayCommand.class, new MessageConnection.MessageListener<PlayCommand, PlayCommand.Builder>() {
                         @Override
                         public void packetReceived(PlayCommand message) {
-                            LogHelper.e(TAG, "PLAY: ", message.playtime.millis);
                             Clock.Instant time = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
                             Clock.Instant correctedTime = time.sub(NetworkHelper.offset);
                             LogHelper.i(TAG, "Corrected time ", time, " by ", NetworkHelper.offset, " to ", correctedTime);
+                            PlayAction action = new PlayAction(correctedTime);
+                            localAudioMixer.pushAction(action);
+                        }
+                    });
+                    connection.addHandler(PauseCommand.class, new MessageConnection.MessageListener<PauseCommand, PauseCommand.Builder>() {
+                        @Override
+                        public void packetReceived(PauseCommand message) {
+                            Clock.Instant time = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
+                            Clock.Instant correctedTime = time.sub(NetworkHelper.offset);
                             PlayAction action = new PlayAction(correctedTime);
                             localAudioMixer.pushAction(action);
                         }

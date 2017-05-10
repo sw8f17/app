@@ -29,7 +29,7 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
 
     AudioTrack at;
 
-    private LocalAudioMixer queue;
+    private LocalAudioMixer mixer;
 
     private Thread audioThread;
     private Semaphore audioWriteLock;
@@ -38,11 +38,11 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
 
     private long bufferStart = 0;
 
-    public LocalSoundSink(LocalAudioMixer queue) {
+    public LocalSoundSink(LocalAudioMixer mixer) {
         //We want to preload the track
         audioWriteLock = new Semaphore(0, true);
-        this.queue = queue;
-        queue.setNewActionListener(this);
+        this.mixer = mixer;
+        mixer.setNewActionListener(this);
         mediaInfo = new MP3MediaInfo(44100, 1, 0, MP3Encoding.UNSIGNED16);
     }
 
@@ -72,7 +72,7 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
                         LogHelper.i(TAG, "At ", now, ", I'm expecting to run out of data in ", expectedEnd, ", or at ", now.add(expectedEnd));
                         LogHelper.i(TAG, "I presented ", timestamp.framePosition, " at ", now, " but i'm actually at ", at.getPlaybackHeadPosition());
 
-                        ByteBuffer buffer = queue.readFor(mediaInfo, now.add(expectedEnd), space);
+                        ByteBuffer buffer = mixer.readFor(mediaInfo, now.add(expectedEnd), space);
 
                         int written = at.write(buffer, buffer.limit(), AudioTrack.WRITE_NON_BLOCKING);
                         if(written != buffer.limit()) {
@@ -144,10 +144,6 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
         at.setPositionNotificationPeriod(at.getBufferSizeInFrames() / 2);
     }
 
-    public void pause() {
-        at.pause();
-    }
-
     public void stop() {
         audioWriteLock.drainPermits();
         if(at != null) {
@@ -155,20 +151,6 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
             at.flush();
             bufferStart = 0;
         }
-    }
-
-    public int getHeadPosition() {
-        return at.getPlaybackHeadPosition();
-    }
-
-    public void resume() {
-        //The audiotrack will only play audio if the buffer is full at start -JJ 27/04-2017
-        //Apparently it's pretty common that the write goes though as 100%, but doesn't fill up
-        //The buffer. We ask it to write twice to circumvent this issue. We can do this because
-        //the audioThread implementation isn't actually required to run at the same speed as the
-        //audiotrack.
-        audioWriteLock.release();
-        at.play();
     }
 
     public void reset() {
@@ -194,21 +176,21 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
         Clock.Instant now = Clock.getTime();
         if(action.getTime().before(now)) {
             LogHelper.w(TAG, "Woops, we missed that deadline. Let's just do it now");
-            action.execute(this);
+            action.execute(this, mixer);
             return true;
         }
         //If the new is before the currently scheduled action we need to cancel the current
         //and schedule the new
         if(scheduled != null && action.getTime().before(scheduled.getTime())) {
             LogHelper.i(TAG, "Evicting currently scheduled task");
-            queue.pushAction(scheduled.getAction());
+            mixer.pushAction(scheduled.getAction());
             timer.cancel();
             scheduled = null;
         }
         //If the scheduled action happened before now it should already have fired
         if(scheduled == null || scheduled.getTime().before(now)) {
             LogHelper.i(TAG, "Scheduling ", action, " for execution");
-            scheduled = new ActionTask(action, this, queue, this);
+            scheduled = new ActionTask(action, this, mixer, this);
             timer.schedule(scheduled, new Date(action.getTime().inMillis()));
             return true;
         }
@@ -239,7 +221,7 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
         @Override
         public void run() {
             LogHelper.i(TAG, "Executing action ", action);
-            action.execute(sink);
+            action.execute(sink, mixer);
             TimedAction nextAction = mixer.readAction();
             if(nextAction != null)
                 listener.onNewAction(nextAction);

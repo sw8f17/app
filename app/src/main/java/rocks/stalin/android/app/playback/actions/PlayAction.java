@@ -1,5 +1,6 @@
 package rocks.stalin.android.app.playback.actions;
 
+import rocks.stalin.android.app.playback.AudioMixer;
 import rocks.stalin.android.app.playback.LocalSoundSink;
 import rocks.stalin.android.app.utils.time.Clock;
 
@@ -12,7 +13,7 @@ public class PlayAction extends TimedAction {
         super(time);
     }
 
-    public void execute(LocalSoundSink at) {
+    public void execute(LocalSoundSink at, AudioMixer mixer) {
         at.play();
     }
 
