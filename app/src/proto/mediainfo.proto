@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package rocks.stalin.scotty;
+
+option java_package = "rocks.stalin.android.app.proto";
+
+message MediaInfo {
+    // The sample rate of the PCM file in Hz
+    int32 samplerate = 1;
+
+    // The number of channels in the PCM file.
+    int32 channels = 2;
+
+    enum Encoding {
+        ALAW8 = 0;
+        BIT16 = 1;
+        BIT24 = 2;
+        BIT32 = 3;
+        BIT8 = 4;
+        FLOAT = 5;
+        FLOAT32 = 6;
+        FLOAT64 = 7;
+        SIGNED = 8;
+        SIGNED16 = 9;
+        SIGNED24 = 10;
+        SIGNED8 = 11;
+        SINGED32 = 12;
+        ULAW8 = 13;
+        UNSIGNED16 = 14;
+        UNSIGNED24 = 15;
+        UNSIGNED32 = 16;
+        UNSIGNED8 = 17;
+    }
+
+    // The encoding of the file
+    Encoding encoding = 3;
+
+    // The size of each frame
+    int32 framesize = 4;
+}
