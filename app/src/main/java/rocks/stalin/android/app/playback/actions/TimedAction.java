@@ -3,6 +3,7 @@ package rocks.stalin.android.app.playback.actions;
 import android.media.AudioTrack;
 import android.support.annotation.NonNull;
 
+import rocks.stalin.android.app.playback.LocalSoundSink;
 import rocks.stalin.android.app.utils.time.Clock;
 
 /**
@@ -20,7 +21,13 @@ public abstract class TimedAction implements Comparable<TimedAction> {
         return time;
     }
 
-    public abstract void execute(AudioTrack at);
+    public abstract void execute(LocalSoundSink at);
+    public abstract String name();
+
+    @Override
+    public String toString() {
+        return name();
+    }
 
     @Override
     public int compareTo(@NonNull TimedAction o) {

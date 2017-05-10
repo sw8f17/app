@@ -94,9 +94,6 @@
             android:name=".ServerNetworkService"
             android:exported="false" />
         <service
-            android:name=".ClientNetworkService"
-            android:exported="false" />
-        <service
             android:name=".ClientMusicService"
             android:exported="false" />
 

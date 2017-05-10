@@ -6,9 +6,11 @@ import android.os.HandlerThread;
 import android.os.Message;
 
 import java.io.IOException;
+import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 
 import okio.ByteString;
+import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.network.MessageConnection;
 import rocks.stalin.android.app.playback.actions.PlayAction;
 import rocks.stalin.android.app.playback.actions.TimedAction;
@@ -36,7 +38,7 @@ class RemoteMixer implements AudioMixer {
     }
 
     @Override
-    public void pushFrame(Clock.Instant nextTime, ByteBuffer read) {
+    public void pushFrame(MP3MediaInfo mediaInfo, Clock.Instant nextTime, ByteBuffer read) {
         Clock.Instant correctedNextTime = nextTime.add(NetworkHelper.offset);
         LogHelper.i(TAG, "Corrected time ", nextTime, " by ", NetworkHelper.offset, " to ", correctedNextTime);
         Timestamp timestampMessage = new Timestamp.Builder()
@@ -58,6 +60,12 @@ class RemoteMixer implements AudioMixer {
     public void pushAction(TimedAction action) {
         Message message = thread.handler.obtainMessage(MixerHandler.WHAT_PUSH_ACTION, action);
         thread.handler.sendMessage(message);
+    }
+
+    //TODO: This doesn't make any sense, split the interfaces!!!
+    @Override
+    public TimedAction readAction() {
+        throw new NoSuchMethodError("You can't call this on a fucking remote mixer you retard");
     }
 
     private static class MixerHandler extends HandlerThread {

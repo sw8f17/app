@@ -77,7 +77,7 @@ public class Clock {
 
         public Duration timeBetween(Instant o) {
             long newMillis = Math.abs(millis - o.getMillis());
-            int newNanos = (int) Math.abs(nanos - o.getNanos());
+            int newNanos = Math.abs(nanos - o.getNanos());
             return new Duration(newMillis, newNanos);
         }
 

@@ -15,44 +15,32 @@ import rocks.stalin.android.app.utils.time.Clock;
 
 public class LocalAudioMixer implements AudioMixer {
     private static final String TAG = LogHelper.makeLogTag(LocalAudioMixer.class);
+    private static final String MACH_TAG = "VIZ-ROBOT";
 
     private TreeMap<Clock.Instant, ByteBuffer> buffer;
     private PriorityQueue<TimedAction> actions;
-    private Clock.Instant nextSilence;
-    private long framePosition;
-    private MP3MediaInfo mediaInfo;
 
     private NewActionListener newActionListener;
 
-    public LocalAudioMixer(MP3MediaInfo mediaInfo, Clock.Instant startTime) {
+    public LocalAudioMixer() {
         buffer = new TreeMap<>();
         actions = new PriorityQueue<>();
-
-        this.mediaInfo = mediaInfo;
-        nextSilence = startTime;
     }
 
     public void setNewActionListener(NewActionListener listener) {
         newActionListener = listener;
     }
 
-    public long getPlaybackPosition() {
-        return framePosition;
-    }
-
-    public Clock.Instant getNextSilence() {
-        return nextSilence;
-    }
-
     @Override
-    public void pushFrame(Clock.Instant nextTime, ByteBuffer read) {
-        nextSilence = nextSilence.add(mediaInfo.timeToPlayBytes(read.capacity()));
+    public void pushFrame(MP3MediaInfo mediaInfo, Clock.Instant nextTime, ByteBuffer read) {
+        LogHelper.i(MACH_TAG, "Frame:", nextTime, "@", mediaInfo.timeToPlayBytes(read.capacity()));
+
         buffer.put(nextTime, read);
     }
 
     @Override
     public void pushAction(TimedAction action) {
-        LogHelper.i(TAG, "Scheduling ", action, " @ ", action.getTime());
+        LogHelper.i(MACH_TAG, "Action:", action, "@", action.getTime());
         if(!newActionListener.onNewAction(action))
             actions.add(action);
     }
@@ -61,11 +49,11 @@ public class LocalAudioMixer implements AudioMixer {
         return actions.poll();
     }
 
-    public ByteBuffer readFor(Clock.Instant time, int samples) {
-        ByteBuffer mixedBuffer = ByteBuffer.allocate(samples * mediaInfo.getSampleSize());
-
+    public ByteBuffer readFor(MP3MediaInfo mediaInfo, Clock.Instant time, int samples) {
         int missingBytes = samples * mediaInfo.getSampleSize();
         LogHelper.i(TAG, "Reading ", missingBytes, " bytes from the timed buffer");
+
+        ByteBuffer mixedBuffer = ByteBuffer.allocate(missingBytes);
 
         Clock.Instant key = time;
         if(buffer.get(key) == null) {
@@ -110,7 +98,6 @@ public class LocalAudioMixer implements AudioMixer {
             mixedBuffer.put(mine);
 
             missingBytes -= takeFromHere;
-            framePosition += takeFromHere / mediaInfo.getSampleSize();
             offset = 0;
             key = buffer.higherKey(key);
             if(key == null) {
@@ -122,6 +109,10 @@ public class LocalAudioMixer implements AudioMixer {
         mixedBuffer.flip();
         mixedBuffer.limit(mixedBuffer.capacity());
         return mixedBuffer;
+    }
+
+    public void flush() {
+        buffer.clear();
     }
 
     public interface NewActionListener {

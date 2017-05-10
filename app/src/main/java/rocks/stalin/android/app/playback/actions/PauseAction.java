@@ -1,7 +1,6 @@
 package rocks.stalin.android.app.playback.actions;
 
-import android.media.AudioTrack;
-
+import rocks.stalin.android.app.playback.LocalSoundSink;
 import rocks.stalin.android.app.utils.time.Clock;
 
 /**
@@ -14,7 +13,12 @@ public class PauseAction extends TimedAction {
     }
 
     @Override
-    public void execute(AudioTrack at) {
-        at.pause();
+    public void execute(LocalSoundSink at) {
+        at.stop();
+    }
+
+    @Override
+    public String name() {
+        return "Pause";
     }
 }

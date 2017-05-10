@@ -11,6 +11,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.Semaphore;
 
+import rocks.stalin.android.app.decoding.MP3Encoding;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.playback.actions.TimedAction;
 import rocks.stalin.android.app.utils.LogHelper;
@@ -27,22 +28,71 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
     private ActionTask scheduled = null;
 
     AudioTrack at;
-    private MP3MediaInfo mediaInfo;
 
     private LocalAudioMixer queue;
 
     private Thread audioThread;
     private Semaphore audioWriteLock;
-    private int frameRatio;
+
+    private MP3MediaInfo mediaInfo;
+
+    private long bufferStart = 0;
 
     public LocalSoundSink(LocalAudioMixer queue) {
         //We want to preload the track
-        audioWriteLock = new Semaphore(1, true);
+        audioWriteLock = new Semaphore(0, true);
         this.queue = queue;
         queue.setNewActionListener(this);
+        mediaInfo = new MP3MediaInfo(44100, 1, 0, MP3Encoding.UNSIGNED16);
     }
 
-    public void change(final MP3MediaInfo mediaInfo) {
+    public void initialize() {
+        audioThread = new Thread() {
+            @Override
+            public void run() {
+                while(true) {
+                    try {
+                        audioWriteLock.acquire();
+
+                        AudioTimestamp timestamp = new AudioTimestamp();
+                        Clock.Instant now;
+                        if(at.getTimestamp(timestamp)) {
+                            now = Clock.fromNanos(timestamp.nanoTime);
+                        } else {
+                            now = Clock.getTime();
+                        }
+
+                        LogHelper.i("VIZ-ROBOT", "PlayHead:", now);
+
+                        long playbackPosition = timestamp.framePosition;
+                        int space = (int) ((at.getPlaybackHeadPosition() + at.getBufferSizeInFrames()) - bufferStart);
+
+                        Clock.Duration expectedEnd = mediaInfo.timeToPlayBytes((bufferStart - playbackPosition) * mediaInfo.getSampleSize());
+
+                        LogHelper.i(TAG, "At ", now, ", I'm expecting to run out of data in ", expectedEnd, ", or at ", now.add(expectedEnd));
+                        LogHelper.i(TAG, "I presented ", timestamp.framePosition, " at ", now, " but i'm actually at ", at.getPlaybackHeadPosition());
+
+                        ByteBuffer buffer = queue.readFor(mediaInfo, now.add(expectedEnd), space);
+
+                        int written = at.write(buffer, buffer.limit(), AudioTrack.WRITE_NON_BLOCKING);
+                        if(written != buffer.limit()) {
+                            LogHelper.e(TAG, "Buffer overflow!");
+                            throw new RuntimeException(String.format("Buffer overflow! Had: %d, but only wrote %d", buffer.limit(), written));
+                        }
+                        bufferStart += written / mediaInfo.getSampleSize();
+
+                    } catch (InterruptedException e) {
+                        LogHelper.w(TAG, "Audiotrack thread was killed");
+                        return;
+                    }
+                }
+            }
+        };
+        audioThread.setName("LocalSoundSink Audio Thread");
+        audioThread.start();
+    }
+
+    public void change(MP3MediaInfo mediaInfo) {
         if(at != null)
             throw new IllegalStateException("You can't change media params before a reset");
         this.mediaInfo = mediaInfo;
@@ -60,8 +110,6 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
                 break;
         }
 
-        frameRatio = mediaInfo.encoding.getSampleSize() * mediaInfo.channels;
-
         at = new AudioTrack.Builder()
                 .setAudioAttributes(new AudioAttributes.Builder()
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -72,7 +120,14 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
                         .build()
                 )
                 .build();
+        LogHelper.i(TAG, "Initialized new audiotrack with a buffer ", at.getBufferSizeInFrames() * mediaInfo.getSampleSize(), " bytes in size");
 
+        audioWriteLock.release();
+    }
+
+    public void play() {
+        audioWriteLock.release(2);
+        at.play();
         at.setPlaybackPositionUpdateListener(new AudioTrack.OnPlaybackPositionUpdateListener() {
             @Override
             public void onMarkerReached(AudioTrack track) {
@@ -87,50 +142,6 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
             }
         });
         at.setPositionNotificationPeriod(at.getBufferSizeInFrames() / 2);
-
-        audioThread = new Thread() {
-            private long bufferStart = 0;
-            @Override
-            public void run() {
-                while(true) {
-                    try {
-                        audioWriteLock.acquire();
-
-                        AudioTimestamp timestamp = new AudioTimestamp();
-                        Clock.Instant now;
-                        if(at.getTimestamp(timestamp)) {
-                            now = Clock.fromNanos(timestamp.nanoTime);
-                        } else {
-                            now = Clock.getTime();
-                        }
-
-                        long playbackPosition = timestamp.framePosition;
-                        int space = (int) ((at.getPlaybackHeadPosition() + at.getBufferSizeInFrames()) - bufferStart);
-
-                        Clock.Duration expectedEnd = mediaInfo.timeToPlayBytes((bufferStart - playbackPosition) * mediaInfo.getSampleSize());
-
-                        LogHelper.i(TAG, "At ", now, ", I'm expecting to run out of data in ", expectedEnd, ", or at ", now.add(expectedEnd));
-
-                        ByteBuffer buffer = queue.readFor(now.add(expectedEnd), space);
-
-                        int written = at.write(buffer, buffer.limit(), AudioTrack.WRITE_NON_BLOCKING);
-                        if(written != buffer.limit())
-                            throw new RuntimeException(String.format("Buffer overflow! Had: %d, but only wrote %d", buffer.limit(), written));
-                        bufferStart += written / mediaInfo.getSampleSize();
-
-                    } catch (InterruptedException e) {
-                        LogHelper.w(TAG, "Audiotrack thread was killed");
-                        return;
-                    }
-                }
-            }
-        };
-        audioThread.setName("LocalSoundSink Audio Thread");
-        audioThread.start();
-    }
-
-    public void play() {
-        at.play();
     }
 
     public void pause() {
@@ -138,11 +149,16 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
     }
 
     public void stop() {
+        audioWriteLock.drainPermits();
         if(at != null) {
             at.pause();
             at.flush();
-            at.stop();
+            bufferStart = 0;
         }
+    }
+
+    public int getHeadPosition() {
+        return at.getPlaybackHeadPosition();
     }
 
     public void resume() {
@@ -151,17 +167,11 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
         //The buffer. We ask it to write twice to circumvent this issue. We can do this because
         //the audioThread implementation isn't actually required to run at the same speed as the
         //audiotrack.
-        audioWriteLock.release(1);
+        audioWriteLock.release();
         at.play();
     }
 
     public void reset() {
-        audioThread.interrupt();
-        try {
-            audioThread.join();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
         stop();
         at.release();
         //Reset the write lock to buffer track
@@ -170,12 +180,21 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
         at = null;
     }
 
+    public void release() {
+        audioThread.interrupt();
+        try {
+            audioThread.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     @Override
     public boolean onNewAction(final TimedAction action) {
         Clock.Instant now = Clock.getTime();
         if(action.getTime().before(now)) {
             LogHelper.w(TAG, "Woops, we missed that deadline. Let's just do it now");
-            action.execute(at);
+            action.execute(this);
             return true;
         }
         //If the new is before the currently scheduled action we need to cancel the current
@@ -189,7 +208,7 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
         //If the scheduled action happened before now it should already have fired
         if(scheduled == null || scheduled.getTime().before(now)) {
             LogHelper.i(TAG, "Scheduling ", action, " for execution");
-            scheduled = new ActionTask(action, at);
+            scheduled = new ActionTask(action, this, queue, this);
             timer.schedule(scheduled, new Date(action.getTime().inMillis()));
             return true;
         }
@@ -198,11 +217,15 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
 
     private static class ActionTask extends TimerTask {
         private TimedAction action;
-        private AudioTrack at;
+        private LocalSoundSink sink;
+        private LocalAudioMixer.NewActionListener listener;
+        private AudioMixer mixer;
 
-        public ActionTask(TimedAction action, AudioTrack at) {
+        public ActionTask(TimedAction action, LocalSoundSink sink, AudioMixer mixer, LocalAudioMixer.NewActionListener listener) {
             this.action = action;
-            this.at = at;
+            this.sink = sink;
+            this.mixer = mixer;
+            this.listener = listener;
         }
 
         public TimedAction getAction() {
@@ -216,7 +239,10 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
         @Override
         public void run() {
             LogHelper.i(TAG, "Executing action ", action);
-            action.execute(at);
+            action.execute(sink);
+            TimedAction nextAction = mixer.readAction();
+            if(nextAction != null)
+                listener.onNewAction(nextAction);
         }
     }
 }

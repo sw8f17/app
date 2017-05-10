@@ -9,6 +9,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 
 import rocks.stalin.android.app.proto.Music;
@@ -24,6 +25,8 @@ public class MessageConnection {
     private static final String TAG = LogHelper.makeLogTag(MessageConnection.class);
 
     private Socket socket;
+    private final InetSocketAddress addr;
+
     DataInputStream dis;
     DataOutputStream dos;
     private boolean running;
@@ -33,15 +36,12 @@ public class MessageConnection {
 
     public MessageConnection(Socket socket) {
         this.socket = socket;
-        try {
-            InputStream stream = socket.getInputStream();
-            dis = new DataInputStream(stream);
+        addr = null;
+    }
 
-            OutputStream ostream = socket.getOutputStream();
-            dos = new DataOutputStream(ostream);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public MessageConnection(InetSocketAddress inetSocketAddress) {
+        socket = null;
+        addr = inetSocketAddress;
     }
 
     public void start() {
@@ -49,6 +49,26 @@ public class MessageConnection {
         processThread = new Thread() {
             @Override
             public void run() {
+                if(socket == null) {
+                    socket = new Socket();
+                    try {
+                        socket.setSoTimeout(0);
+                        socket.connect(addr);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                if(dis == null || dos == null) {
+                    try {
+                        InputStream stream = socket.getInputStream();
+                        dis = new DataInputStream(stream);
+
+                        OutputStream ostream = socket.getOutputStream();
+                        dos = new DataOutputStream(ostream);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
                 while(running) {
                     try {
                         int type = dis.readByte();
@@ -71,6 +91,13 @@ public class MessageConnection {
     public void stop() throws IOException {
         running = false;
         socket.close();
+        processThread.interrupt();
+
+        try {
+            processThread.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public <M extends Message<M, B>, B extends Message.Builder<M, B>> void addHandler(Class<M> messageType, MessageListener<M,B> listener) {
@@ -78,8 +105,8 @@ public class MessageConnection {
     }
 
     private void processMessage(int type, byte[] data) throws IOException {
-        Message<?, ?> message = null;
-        MessageListener handler = null;
+        Message<?, ?> message;
+        MessageListener handler;
         switch (type) {
             case 1:
                 message = Welcome.ADAPTER.decode(data);
