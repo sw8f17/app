@@ -19,9 +19,11 @@ import rocks.stalin.android.app.playback.LocalSoundSink;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
 import rocks.stalin.android.app.playback.actions.PauseAction;
 import rocks.stalin.android.app.playback.actions.PlayAction;
+import rocks.stalin.android.app.proto.MediaInfo;
 import rocks.stalin.android.app.proto.Music;
 import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.proto.PlayCommand;
+import rocks.stalin.android.app.proto.SongChangeCommand;
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.NetworkHelper;
@@ -98,7 +100,22 @@ public class ClientMusicService extends Service {
                         public void packetReceived(PauseCommand message) {
                             Clock.Instant time = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
                             Clock.Instant correctedTime = time.sub(NetworkHelper.offset);
-                            PlayAction action = new PlayAction(correctedTime);
+                            PauseAction action = new PauseAction(correctedTime);
+                            localAudioMixer.pushAction(action);
+                        }
+                    });
+                    connection.addHandler(SongChangeCommand.class, new MessageConnection.MessageListener<SongChangeCommand, SongChangeCommand.Builder>() {
+                        @Override
+                        public void packetReceived(SongChangeCommand message) {
+                            Clock.Instant time = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
+                            Clock.Instant correctedTime = time.sub(NetworkHelper.offset);
+
+                            MediaInfo newInfo = message.songmetadata.mediainfo;
+
+                            MP3Encoding encoding = MP3Encoding.UNSIGNED16;
+                            MP3MediaInfo mediaInfo = new MP3MediaInfo(newInfo.samplerate, newInfo.channels, newInfo.framesize, encoding);
+
+                            MediaChangeAction action = new MediaChangeAction(correctedTime, mediaInfo);
                             localAudioMixer.pushAction(action);
                         }
                     });

@@ -68,7 +68,11 @@ class RemoteMixer implements AudioMixer {
         throw new NoSuchMethodError("You can't call this on a fucking remote mixer you retard");
     }
 
-    private static class MixerHandler extends HandlerThread {
+    @Override
+    public void flush() {
+    }
+
+    private static class MixerHandler<M extends com.squareup.wire.Message<M, B>, B extends com.squareup.wire.Message.Builder<M, B>> extends HandlerThread {
         public static int WHAT_PUSH_ACTION = 1;
 
         public Handler handler;
@@ -85,19 +89,12 @@ class RemoteMixer implements AudioMixer {
                 @Override
                 public void handleMessage(Message msg) {
                     if(msg.what == WHAT_PUSH_ACTION) {
-                        TimedAction action = (TimedAction) msg.obj;
+                        TimedAction<M, B> action = (TimedAction<M, B>) msg.obj;
 
-                        Timestamp timestampMessage = new Timestamp.Builder()
-                                .millis(action.getTime().getMillis())
-                                .nanos(action.getTime().getNanos())
-                                .build();
-
-                        final PlayCommand actionMessage = new PlayCommand.Builder()
-                                .playtime(timestampMessage)
-                                .build();
+                        final M actionMessage = action.serialize();
 
                         try {
-                            connection.send(actionMessage, PlayCommand.class);
+                            connection.send(actionMessage, actionMessage.getClass());
                         } catch (IOException e) {
                             LogHelper.w(TAG, "Failed transmitting the action");
                         }

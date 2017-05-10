@@ -148,7 +148,7 @@ public class MessageConnection {
         }
     }
 
-    public <M extends Message<M, B>, B extends Message.Builder<M, B>> void send(M packet, Class<M> clazz) throws IOException {
+    public <M extends Message<M, B>, B extends Message.Builder<M, B>> void send(M packet, Class<? extends M> clazz) throws IOException {
         byte[] packetData = packet.adapter().encode(packet);
         dos.writeByte(MessageRegistry.getInstance().getID(clazz));
         dos.writeInt(packetData.length);

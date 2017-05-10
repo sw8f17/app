@@ -2,13 +2,14 @@ package rocks.stalin.android.app.playback.actions;
 
 import rocks.stalin.android.app.playback.AudioMixer;
 import rocks.stalin.android.app.playback.LocalSoundSink;
+import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.utils.time.Clock;
 
 /**
  * Created by delusional on 5/4/17.
  */
 
-public class PauseAction extends TimedAction {
+public class PauseAction extends TimedAction<PauseCommand, PauseCommand.Builder> {
     public PauseAction(Clock.Instant time) {
         super(time);
     }
@@ -22,5 +23,12 @@ public class PauseAction extends TimedAction {
     @Override
     public String name() {
         return "Pause";
+    }
+
+    @Override
+    public PauseCommand serialize() {
+        return new PauseCommand.Builder()
+                .playtime(getTimestampMessage())
+                .build();
     }
 }

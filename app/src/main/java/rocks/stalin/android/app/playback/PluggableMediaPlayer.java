@@ -68,8 +68,12 @@ public class PluggableMediaPlayer implements MediaPlayer {
         feeder = new MediaPlayerFeeder(currentFile, mediaInfo, player, slaves);
 
         sink = new LocalSoundSink(player);
-        sink.change(mediaInfo);
         sink.initialize();
+
+        Clock.Instant time = Clock.getTime();
+        MediaChangeAction action = new MediaChangeAction(time, mediaInfo);
+
+        player.pushAction(action);
         preparedListener.onPrepared(this);
     }
 
@@ -147,11 +151,6 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
         currentFile = decoder.open(mContext, uriSource);
         mediaInfo = currentFile.getMediaInfo();
-
-        Clock.Instant time = Clock.getTime();
-        MediaChangeAction action = new MediaChangeAction(time, mediaInfo);
-
-        player.pushAction(action);
 
         state = PlaybackState.Stopped;
     }

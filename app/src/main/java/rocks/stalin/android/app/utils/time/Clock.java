@@ -50,8 +50,8 @@ public class Clock {
 
         public Instant(long millis, int nanos) {
             this.millis = millis;
-            if(nanos / NANO_TO_MILLIS > 0)
-                throw new IllegalArgumentException("The nanos given was greater than one millisecond");
+            if(nanos >= NANO_TO_MILLIS)
+                throw new IllegalArgumentException("The nanos given was greater than one millisecond: " +  nanos);
 
             this.nanos = nanos;
         }

@@ -75,6 +75,8 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
                         ByteBuffer buffer = mixer.readFor(mediaInfo, now.add(expectedEnd), space);
 
                         int written = at.write(buffer, buffer.limit(), AudioTrack.WRITE_NON_BLOCKING);
+                        //This sometimes happens when we pause after while it's running.
+                        //Not a huge issue, but we should find some way fo fixing it -JJ 10/05-2017
                         if(written != buffer.limit()) {
                             LogHelper.e(TAG, "Buffer overflow!");
                             throw new RuntimeException(String.format("Buffer overflow! Had: %d, but only wrote %d", buffer.limit(), written));
@@ -126,7 +128,7 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
     }
 
     public void play() {
-        audioWriteLock.release(2);
+        audioWriteLock.release(1);
         at.play();
         at.setPlaybackPositionUpdateListener(new AudioTrack.OnPlaybackPositionUpdateListener() {
             @Override
@@ -189,7 +191,7 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
         }
         //If the scheduled action happened before now it should already have fired
         if(scheduled == null || scheduled.getTime().before(now)) {
-            LogHelper.i(TAG, "Scheduling ", action, " for execution");
+            LogHelper.i(TAG, "Scheduling ", action, " for execution at ", action.getTime());
             scheduled = new ActionTask(action, this, mixer, this);
             timer.schedule(scheduled, new Date(action.getTime().inMillis()));
             return true;
