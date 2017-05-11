@@ -10,6 +10,8 @@ import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import rocks.stalin.android.app.decoding.MP3Encoding;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
@@ -33,6 +35,7 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
 
     private Thread audioThread;
     private Semaphore audioWriteLock;
+    private Lock atLock = new ReentrantLock(true);
 
     private MP3MediaInfo mediaInfo;
 
@@ -44,19 +47,21 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
         this.mixer = mixer;
         mixer.setNewActionListener(this);
         mediaInfo = new MP3MediaInfo(44100, 1, 0, MP3Encoding.UNSIGNED16);
-    }
 
-    public void initialize() {
         audioThread = new Thread() {
             @Override
             public void run() {
                 while(true) {
+                    int written;
+                    ByteBuffer buffer;
                     try {
                         audioWriteLock.acquire();
 
+                        atLock.lockInterruptibly();
+
                         AudioTimestamp timestamp = new AudioTimestamp();
                         Clock.Instant now;
-                        if(at.getTimestamp(timestamp)) {
+                        if (at.getTimestamp(timestamp)) {
                             now = Clock.fromNanos(timestamp.nanoTime);
                         } else {
                             now = Clock.getTime();
@@ -72,21 +77,27 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
                         LogHelper.i(TAG, "At ", now, ", I'm expecting to run out of data in ", expectedEnd, ", or at ", now.add(expectedEnd));
                         LogHelper.i(TAG, "I presented ", timestamp.framePosition, " at ", now, " but i'm actually at ", at.getPlaybackHeadPosition());
 
-                        ByteBuffer buffer = mixer.readFor(mediaInfo, now.add(expectedEnd), space);
+                        buffer = LocalSoundSink.this.mixer.readFor(mediaInfo, now.add(expectedEnd), space);
 
-                        int written = at.write(buffer, buffer.limit(), AudioTrack.WRITE_NON_BLOCKING);
-                        //This sometimes happens when we pause after while it's running.
-                        //Not a huge issue, but we should find some way fo fixing it -JJ 10/05-2017
-                        if(written != buffer.limit()) {
-                            LogHelper.e(TAG, "Buffer overflow!");
-                            throw new RuntimeException(String.format("Buffer overflow! Had: %d, but only wrote %d", buffer.limit(), written));
-                        }
-                        bufferStart += written / mediaInfo.getSampleSize();
-
+                        written = at.write(buffer, buffer.limit(), AudioTrack.WRITE_NON_BLOCKING);
                     } catch (InterruptedException e) {
-                        LogHelper.w(TAG, "Audiotrack thread was killed");
+                        Thread.currentThread().interrupt();
+                        LogHelper.i(TAG, "Audio feeder thread interrupted");
                         return;
+                    } finally {
+                        atLock.unlock();
                     }
+
+                    if (atLock.tryLock())
+                        atLock.unlock();
+
+                    //This sometimes happens when we pause after while it's running.
+                    //Not a huge issue, but we should find some way fo fixing it -JJ 10/05-2017
+                    if (written != buffer.limit()) {
+                        LogHelper.e(TAG, "Buffer overflow!");
+                        throw new RuntimeException(String.format("Buffer overflow! Had: %d, but only wrote %d", buffer.limit(), written));
+                    }
+                    bufferStart += written / mediaInfo.getSampleSize();
                 }
             }
         };
@@ -112,6 +123,8 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
                 break;
         }
 
+        atLock.lock();
+
         at = new AudioTrack.Builder()
                 .setAudioAttributes(new AudioAttributes.Builder()
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -124,11 +137,14 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
                 .build();
         LogHelper.i(TAG, "Initialized new audiotrack with a buffer ", at.getBufferSizeInFrames() * mediaInfo.getSampleSize(), " bytes in size");
 
-        audioWriteLock.release();
+        atLock.unlock();
     }
 
     public void play() {
         audioWriteLock.release(1);
+
+        atLock.lock();
+
         at.play();
         at.setPlaybackPositionUpdateListener(new AudioTrack.OnPlaybackPositionUpdateListener() {
             @Override
@@ -144,24 +160,37 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
             }
         });
         at.setPositionNotificationPeriod(at.getBufferSizeInFrames() / 2);
+
+        atLock.unlock();
     }
 
     public void stop() {
+        atLock.lock();
+
         audioWriteLock.drainPermits();
         if(at != null) {
             at.pause();
             at.flush();
             bufferStart = 0;
         }
+
+        atLock.unlock();
     }
 
     public void reset() {
+        LogHelper.i(TAG, "Resetting audio track");
         stop();
-        at.release();
-        //Reset the write lock to buffer track
+
+        atLock.lock();
+
         audioWriteLock.drainPermits();
-        audioWriteLock.release(1);
-        at = null;
+        if(at != null) {
+            at.release();
+            at = null;
+            bufferStart = 0;
+        }
+
+        atLock.unlock();
     }
 
     public void release() {
@@ -173,28 +202,36 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
         }
     }
 
+    private Lock actionLock = new ReentrantLock(true);
+
     @Override
     public boolean onNewAction(final TimedAction action) {
-        Clock.Instant now = Clock.getTime();
-        if(action.getTime().before(now)) {
-            LogHelper.w(TAG, "Woops, we missed that deadline. Let's just do it now");
-            action.execute(this, mixer);
-            return true;
-        }
-        //If the new is before the currently scheduled action we need to cancel the current
-        //and schedule the new
-        if(scheduled != null && action.getTime().before(scheduled.getTime())) {
-            LogHelper.i(TAG, "Evicting currently scheduled task");
-            mixer.pushAction(scheduled.getAction());
-            timer.cancel();
-            scheduled = null;
-        }
-        //If the scheduled action happened before now it should already have fired
-        if(scheduled == null || scheduled.getTime().before(now)) {
-            LogHelper.i(TAG, "Scheduling ", action, " for execution at ", action.getTime());
-            scheduled = new ActionTask(action, this, mixer, this);
-            timer.schedule(scheduled, new Date(action.getTime().inMillis()));
-            return true;
+        actionLock.lock();
+
+        try {
+            Clock.Instant now = Clock.getTime();
+            if (action.getTime().before(now)) {
+                LogHelper.w(TAG, "Woops, we missed that deadline. Let's just do it now");
+                action.execute(this, mixer);
+                return true;
+            }
+            //If the new is before the currently scheduled action we need to cancel the current
+            //and schedule the new
+            if (scheduled != null && action.getTime().before(scheduled.getTime())) {
+                LogHelper.i(TAG, "Evicting currently scheduled task");
+                mixer.pushAction(scheduled.getAction());
+                timer.cancel();
+                scheduled = null;
+            }
+            //If the scheduled action happened before now it should already have fired
+            if (scheduled == null || scheduled.getTime().before(now)) {
+                LogHelper.i(TAG, "Scheduling ", action, " for execution at ", action.getTime());
+                scheduled = new ActionTask(action, this, mixer, this, atLock);
+                timer.schedule(scheduled, new Date(action.getTime().inMillis()));
+                return true;
+            }
+        } finally {
+            actionLock.unlock();
         }
         return false;
     }
@@ -203,13 +240,15 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
         private TimedAction action;
         private LocalSoundSink sink;
         private LocalAudioMixer.NewActionListener listener;
+        private Lock atLock;
         private AudioMixer mixer;
 
-        public ActionTask(TimedAction action, LocalSoundSink sink, AudioMixer mixer, LocalAudioMixer.NewActionListener listener) {
+        public ActionTask(TimedAction action, LocalSoundSink sink, AudioMixer mixer, LocalAudioMixer.NewActionListener listener, Lock atLock) {
             this.action = action;
             this.sink = sink;
             this.mixer = mixer;
             this.listener = listener;
+            this.atLock = atLock;
         }
 
         public TimedAction getAction() {
@@ -223,7 +262,11 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
         @Override
         public void run() {
             LogHelper.i(TAG, "Executing action ", action);
+
+            atLock.lock();
             action.execute(sink, mixer);
+            atLock.unlock();
+
             TimedAction nextAction = mixer.readAction();
             if(nextAction != null)
                 listener.onNewAction(nextAction);

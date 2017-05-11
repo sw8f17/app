@@ -4,6 +4,7 @@ import android.content.Context;
 import android.net.Uri;
 
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +18,7 @@ import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
 import rocks.stalin.android.app.playback.actions.PauseAction;
 import rocks.stalin.android.app.playback.actions.PlayAction;
+import rocks.stalin.android.app.playback.actions.TimedAction;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.decoding.MP3File;
 import rocks.stalin.android.app.utils.time.Clock;
@@ -41,7 +43,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
     private OnPreparedListener preparedListener;
     private OnSeekCompleteListener seekCompleteListener;
 
-    private LocalAudioMixer player;
+    private LocalAudioMixer localMixer;
     private List<AudioMixer> slaves;
     private MP3MediaInfo mediaInfo;
 
@@ -50,9 +52,15 @@ public class PluggableMediaPlayer implements MediaPlayer {
     private long pauseSample;
 
     public PluggableMediaPlayer() {
+        state = PlaybackState.Idle;
+
         decoder = new MP3Decoder();
+        decoder.init();
+
         slaves = new ArrayList<>();
-        state = PlaybackState.Stopped;
+
+        localMixer = new LocalAudioMixer();
+        sink = new LocalSoundSink(localMixer);
     }
 
     @Override
@@ -60,44 +68,63 @@ public class PluggableMediaPlayer implements MediaPlayer {
     }
 
     @Override
-    public void prepareAsync() {
+    public void reset() {
+        sink.reset();
         state = PlaybackState.Stopped;
+        if(feederHandle != null) {
+            feederHandle.cancel(true);
+            feederHandle = null;
+        }
+        if(currentFile != null) {
+            currentFile.close();
+            currentFile = null;
+        }
+        localMixer.flush();
 
-        player = new LocalAudioMixer();
+        state = PlaybackState.Idle;
+    }
 
-        feeder = new MediaPlayerFeeder(currentFile, mediaInfo, player, slaves);
+    @Override
+    public void setDataSource(Context mContext, Uri uriSource) throws IOException {
+        if(state != PlaybackState.Idle) {
+            throw new IllegalStateException("You can't set the datasource from " + state);
+        }
 
-        sink = new LocalSoundSink(player);
-        sink.initialize();
+        currentFile = decoder.open(mContext, uriSource);
+        mediaInfo = currentFile.getMediaInfo();
 
         Clock.Instant time = Clock.getTime();
         MediaChangeAction action = new MediaChangeAction(time, mediaInfo);
+        pushAction(action);
 
-        player.pushAction(action);
+        state = PlaybackState.Initialized;
+    }
+
+    @Override
+    public void setDataSource(String source) {
+        throw new UnsupportedOperationException("We can't stream urls yet, maybe some day");
+    }
+
+    @Override
+    public void prepareAsync() {
+        if(state != PlaybackState.Initialized) {
+            throw new IllegalStateException("You can't prepareAsync from " + state);
+        }
+
+        state = PlaybackState.Preparing;
+
+        feeder = new MediaPlayerFeeder(currentFile, mediaInfo, localMixer, slaves);
+
+        state = PlaybackState.Prepared;
         preparedListener.onPrepared(this);
     }
 
     @Override
-    public void reset() {
-        if(sink != null) {
-            sink.reset();
-            currentFile.close();
-            currentFile = null;
-            state = PlaybackState.Stopped;
-            feederHandle.cancel(false);
-        }
-    }
-
-    @Override
-    public void release() {
-        sink.reset();
-        currentFile.close();
-        service.shutdown();
-        decoder.exit();
-    }
-
-    @Override
     public void start() {
+        if(state != PlaybackState.Prepared && state != PlaybackState.Playing && state != PlaybackState.Paused) {
+            throw new IllegalStateException("You can't start from " + state);
+        }
+
         LogHelper.e(TAG, "Starting playback");
 
         Clock.Instant startTime = Clock.getTime().add(Clock.Duration.fromMillis(100));
@@ -111,25 +138,30 @@ public class PluggableMediaPlayer implements MediaPlayer {
         feederHandle = service.scheduleAtFixedRate(feeder, 0, period, TimeUnit.MILLISECONDS);
 
         PlayAction action = new PlayAction(startTime);
-        player.pushAction(action);
-        for(AudioMixer slave : slaves) {
-            slave.pushAction(action);
-        }
+        pushAction(action);
 
         state = PlaybackState.Playing;
     }
 
+    private void pushAction(TimedAction action) {
+        localMixer.pushAction(action);
+        for(AudioMixer slave : slaves) {
+            slave.pushAction(action);
+        }
+    }
+
     @Override
     public void pause() {
+        if(state != PlaybackState.Playing) {
+            throw new IllegalStateException("You can't pause from " + state);
+        }
+
         LogHelper.e(TAG, "Pausing playback");
         Clock.Instant pauseTime = Clock.getTime();
 
         PauseAction action = new PauseAction(pauseTime);
 
-        player.pushAction(action);
-        for(AudioMixer slave : slaves) {
-            slave.pushAction(action);
-        }
+        pushAction(action);
 
         state = PlaybackState.Paused;
 
@@ -145,19 +177,15 @@ public class PluggableMediaPlayer implements MediaPlayer {
     }
 
     @Override
-    public void setDataSource(Context mContext, Uri uriSource) throws IOException {
-        //TODO: Is this a good idea to do here?
-        decoder.init();
+    public void release() {
+        state = PlaybackState.End;
 
-        currentFile = decoder.open(mContext, uriSource);
-        mediaInfo = currentFile.getMediaInfo();
-
-        state = PlaybackState.Stopped;
-    }
-
-    @Override
-    public void setDataSource(String source) {
-        throw new UnsupportedOperationException("We can't stream urls yet, maybe some day");
+        reset();
+        currentFile.close();
+        sink.release();
+        localMixer.flush();
+        decoder.exit();
+        service.shutdown();
     }
 
     @Override
@@ -243,15 +271,19 @@ public class PluggableMediaPlayer implements MediaPlayer {
             Clock.Duration preloadBufferSize = frameTime.multiply(PRELOAD_SIZE);
             Clock.Instant bufferEnd = now.add(preloadBufferSize);
 
-            while(nextFrameStart.before(bufferEnd)) {
+            while (nextFrameStart.before(bufferEnd)) {
                 LogHelper.i(TAG, "Inserting frame into the buffer for playback at ", nextFrameStart);
                 ByteBuffer read = file.decodeFrame();
                 player.pushFrame(mediaInfo, nextFrameStart, read);
-                for(AudioMixer slave : slaves)
+                for (AudioMixer slave : slaves)
                     slave.pushFrame(mediaInfo, nextFrameStart, read);
                 nextSample = file.tell();
                 nextFrameStart = nextFrameStart.add(mediaInfo.timeToPlayBytes(read.limit()));
             }
+        }
+
+        public interface BufferedListener {
+            void onBufferComplete();
         }
     }
 }

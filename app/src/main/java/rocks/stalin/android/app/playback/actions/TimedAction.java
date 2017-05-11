@@ -5,6 +5,9 @@ import android.support.annotation.NonNull;
 
 import com.squareup.wire.Message;
 
+import java.sql.Time;
+
+import rocks.stalin.android.app.network.Messageable;
 import rocks.stalin.android.app.playback.AudioMixer;
 import rocks.stalin.android.app.playback.LocalSoundSink;
 import rocks.stalin.android.app.proto.Timestamp;
@@ -14,7 +17,7 @@ import rocks.stalin.android.app.utils.time.Clock;
  * Created by delusional on 5/4/17.
  */
 
-public abstract class TimedAction <M extends Message<M, B>, B extends Message.Builder<M, B>> implements Comparable<TimedAction> {
+public abstract class TimedAction implements Comparable<TimedAction> {
     private Clock.Instant time;
 
     public TimedAction(Clock.Instant time) {
@@ -34,8 +37,6 @@ public abstract class TimedAction <M extends Message<M, B>, B extends Message.Bu
                 .nanos(time.getNanos())
                 .build();
     }
-
-    public abstract M serialize();
 
     @Override
     public String toString() {

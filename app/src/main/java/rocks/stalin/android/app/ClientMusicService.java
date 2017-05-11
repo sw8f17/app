@@ -62,8 +62,6 @@ public class ClientMusicService extends Service {
 
         localAudioMixer = new LocalAudioMixer();
         sink = new LocalSoundSink(localAudioMixer);
-        sink.initialize();
-        localAudioMixer.pushAction(new MediaChangeAction(Clock.getTime(), new MP3MediaInfo(44100, 1, 0, MP3Encoding.UNSIGNED16)));
     }
 
     @Override

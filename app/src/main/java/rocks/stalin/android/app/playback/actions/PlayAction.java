@@ -1,15 +1,17 @@
 package rocks.stalin.android.app.playback.actions;
 
+import rocks.stalin.android.app.network.Messageable;
 import rocks.stalin.android.app.playback.AudioMixer;
 import rocks.stalin.android.app.playback.LocalSoundSink;
 import rocks.stalin.android.app.proto.PlayCommand;
+import rocks.stalin.android.app.proto.Timestamp;
 import rocks.stalin.android.app.utils.time.Clock;
 
 /**
  * Created by delusional on 5/4/17.
  */
 
-public class PlayAction extends TimedAction<PlayCommand, PlayCommand.Builder> {
+public class PlayAction extends TimedAction implements Messageable<PlayCommand, PlayCommand.Builder>{
     public PlayAction(Clock.Instant time) {
         super(time);
     }
@@ -24,7 +26,7 @@ public class PlayAction extends TimedAction<PlayCommand, PlayCommand.Builder> {
     }
 
     @Override
-    public PlayCommand serialize() {
+    public PlayCommand toMessage() {
         return new PlayCommand.Builder()
                 .playtime(getTimestampMessage())
                 .build();

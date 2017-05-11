@@ -118,7 +118,7 @@ public class WifiP2PMessageClient {
         //We don't need to discover when we are connected
         stopDiscovery();
 
-        WifiDirectBroadcastReceiver rec =
+        final WifiDirectBroadcastReceiver rec =
                 new WifiDirectBroadcastReceiver(p2pManager, channel, new WifiP2pManager.ConnectionInfoListener() {
                     @Override
                     public void onConnectionInfoAvailable(final WifiP2pInfo wifiP2pInfo) {
@@ -130,10 +130,7 @@ public class WifiP2PMessageClient {
                     }
                 });
 
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
-
-        context.registerReceiver(rec, intentFilter);
+        rec.register(context);
 
         WifiP2pConfig config = new WifiP2pConfig();
         config.deviceAddress = host;

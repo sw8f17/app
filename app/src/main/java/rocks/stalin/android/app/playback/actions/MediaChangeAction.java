@@ -3,6 +3,7 @@ package rocks.stalin.android.app.playback.actions;
 import com.squareup.wire.Message;
 
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
+import rocks.stalin.android.app.network.Messageable;
 import rocks.stalin.android.app.playback.AudioMixer;
 import rocks.stalin.android.app.playback.LocalSoundSink;
 import rocks.stalin.android.app.proto.MediaInfo;
@@ -15,7 +16,7 @@ import rocks.stalin.android.app.utils.time.Clock;
  * Created by delusional on 5/10/17.
  */
 
-public class MediaChangeAction extends TimedAction <SongChangeCommand, SongChangeCommand.Builder> {
+public class MediaChangeAction extends TimedAction implements Messageable<SongChangeCommand, SongChangeCommand.Builder> {
     private MP3MediaInfo mediaInfo;
 
     public MediaChangeAction(Clock.Instant time, MP3MediaInfo mediaInfo) {
@@ -25,6 +26,7 @@ public class MediaChangeAction extends TimedAction <SongChangeCommand, SongChang
 
     @Override
     public void execute(LocalSoundSink at, AudioMixer mixer) {
+        at.reset();
         at.change(mediaInfo);
     }
 
@@ -34,7 +36,7 @@ public class MediaChangeAction extends TimedAction <SongChangeCommand, SongChang
     }
 
     @Override
-    public SongChangeCommand serialize() {
+    public SongChangeCommand toMessage() {
         Timestamp time = getTimestampMessage();
         return new SongChangeCommand.Builder()
                 .playtime(time)

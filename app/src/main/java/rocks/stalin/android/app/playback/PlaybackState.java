@@ -5,7 +5,14 @@ package rocks.stalin.android.app.playback;
  */
 
 enum PlaybackState {
+    Idle,
+    Initialized,
+    Preparing,
+    Prepared,
     Stopped,
     Paused,
     Playing,
+    Complete,
+    Error,
+    End,
 }

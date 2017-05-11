@@ -12,6 +12,7 @@ import java.nio.ByteBuffer;
 import okio.ByteString;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.network.MessageConnection;
+import rocks.stalin.android.app.network.Messageable;
 import rocks.stalin.android.app.playback.actions.PlayAction;
 import rocks.stalin.android.app.playback.actions.TimedAction;
 import rocks.stalin.android.app.proto.Music;
@@ -70,6 +71,7 @@ class RemoteMixer implements AudioMixer {
 
     @Override
     public void flush() {
+        throw new NoSuchMethodError("You can't call this on a fucking remote mixer you retard");
     }
 
     private static class MixerHandler<M extends com.squareup.wire.Message<M, B>, B extends com.squareup.wire.Message.Builder<M, B>> extends HandlerThread {
@@ -89,9 +91,9 @@ class RemoteMixer implements AudioMixer {
                 @Override
                 public void handleMessage(Message msg) {
                     if(msg.what == WHAT_PUSH_ACTION) {
-                        TimedAction<M, B> action = (TimedAction<M, B>) msg.obj;
+                        Messageable<M, B> action = (Messageable<M, B>) msg.obj;
 
-                        final M actionMessage = action.serialize();
+                        final M actionMessage = action.toMessage();
 
                         try {
                             connection.send(actionMessage, actionMessage.getClass());

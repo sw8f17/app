@@ -31,9 +31,7 @@ JNIEXPORT jobject JNICALL
 Java_rocks_stalin_android_app_utils_time_Clock_getTime(JNIEnv *env, jclass type) {
     timespec time;
     clock_gettime(CLOCK_REALTIME, &time);
-    __android_log_print(ANDROID_LOG_INFO, TAG, "Time was %ld:%ld", time.tv_sec, time.tv_nsec);
     int64_t ms = (((int64_t)time.tv_sec) * 1000L) + (((int64_t)time.tv_nsec) / 1000000L);
-    __android_log_print(ANDROID_LOG_INFO, TAG, "MS: %ld, leftover ns: %ld", time.tv_sec, time.tv_nsec / 1000000);
     int32_t ns = (int32_t) (time.tv_nsec % 1000000L);
     return TimeCreate(env, ms, ns);
 }

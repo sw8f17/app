@@ -73,6 +73,9 @@ public class MessageConnection {
                     try {
                         int type = dis.readByte();
                         int length = dis.readInt();
+                        if(length < 0){
+                            LogHelper.e(TAG, "We got a length of ", length, " which doesn't make any sense. The type was ", type, " by the way");
+                        }
                         byte[] data = new byte[length];
                         dis.readFully(data, 0, length);
 
@@ -140,6 +143,8 @@ public class MessageConnection {
                 LogHelper.w(TAG, "Received unknown message of type ", type);
                 return;
         }
+        if(handler == null)
+            LogHelper.w(TAG, "There's no handler for message of type ", type);
         if(handler != null && message != null) {
             /**
              * This is unsafe, since it's deserializing the network data.
