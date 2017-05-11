@@ -8,14 +8,13 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
 import rocks.stalin.android.app.utils.LogHelper;
 
-public class SntpOffsetTask extends AsyncTask<Void, Void, Long> {
-    private static final String TAG = LogHelper.makeLogTag(SntpOffsetTask.class);
+public class SntpOffsetSource {
+    private static final String TAG = LogHelper.makeLogTag(SntpOffsetSource.class);
 
     private static final int ORIGINATE_TIME_OFFSET = 24;
     private static final int RECEIVE_TIME_OFFSET = 32;
@@ -32,8 +31,7 @@ public class SntpOffsetTask extends AsyncTask<Void, Void, Long> {
     // 70 years plus 17 leap days
     private static final long OFFSET_1900_TO_1970 = ((365L * 70L) + 17L) * 24L * 60L * 60L;
 
-    @Override
-    public Long doInBackground(Void ... params) {
+    public long getOffset() {
         DatagramSocket socket = null;
         long clockOffset;
         try {
@@ -69,15 +67,15 @@ public class SntpOffsetTask extends AsyncTask<Void, Void, Long> {
             clockOffset = ((receiveTime - originateTime) + (transmitTime - responseTime))/2;
         } catch (UnknownHostException e) {
             Log.e(TAG, "Unknown ntp server host");
-            return null;
+            throw new RuntimeException(e);
         } catch (SocketException e) {
             Log.e(TAG, "Error while reading ntp time");
             e.printStackTrace();
-            return null;
+            throw new RuntimeException(e);
         } catch (IOException e) {
             Log.e(TAG, "Generic problem reading ntp time");
             e.printStackTrace();
-            return null;
+            throw new RuntimeException(e);
         } finally {
             if (socket != null) {
                 socket.close();

@@ -43,20 +43,17 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
-import okio.ByteString;
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
 import rocks.stalin.android.app.network.MessageConnection;
+import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
+import rocks.stalin.android.app.network.SntpOffsetSource;
 import rocks.stalin.android.app.network.WifiP2PMessageServer;
 import rocks.stalin.android.app.playback.CastPlayback;
 import rocks.stalin.android.app.playback.RemotePlayback;
 import rocks.stalin.android.app.playback.Playback;
 import rocks.stalin.android.app.playback.PlaybackManager;
 import rocks.stalin.android.app.playback.QueueManager;
-import rocks.stalin.android.app.proto.Music;
-import rocks.stalin.android.app.proto.PlayCommand;
-import rocks.stalin.android.app.proto.Timestamp;
-import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.ui.NowPlayingActivity;
 import rocks.stalin.android.app.utils.LogHelper;
 
@@ -139,7 +136,8 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
     private RemotePlayback remotePlayback;
 
-    WifiP2PMessageServer server;
+    private WifiP2PMessageServer server;
+    private PeriodicPollOffsetProvider timeProvider;
 
     /*
      * (non-Javadoc)
@@ -149,6 +147,9 @@ public class MusicService extends MediaBrowserServiceCompat implements
     public void onCreate() {
         super.onCreate();
         LogHelper.d(TAG, "onCreate");
+
+        timeProvider = new PeriodicPollOffsetProvider(new SntpOffsetSource());
+        timeProvider.start();
 
         mMusicProvider = new MusicProvider(new ExternalStorageSource(getApplicationContext()));
         //mMusicProvider = new MusicProvider();
@@ -196,7 +197,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
             }
         });
 
-        remotePlayback = new RemotePlayback(this, mMusicProvider);
+        remotePlayback = new RemotePlayback(this, mMusicProvider, timeProvider);
         mPlaybackManager = new PlaybackManager(this, getResources(), mMusicProvider, queueManager,
                 remotePlayback);
 
@@ -278,6 +279,8 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
         mDelayedStopHandler.removeCallbacksAndMessages(null);
         mSession.release();
+
+        timeProvider.release();
 
         try {
             server.stop();

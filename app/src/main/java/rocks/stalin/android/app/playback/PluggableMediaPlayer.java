@@ -249,7 +249,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     private static class MediaPlayerFeeder implements Runnable {
         private static final String TAG = LogHelper.makeLogTag(MediaPlayerFeeder.class);
-        public static final int PRELOAD_SIZE = 5;
+        public static final int PRELOAD_SIZE = 10;
 
         private MP3File file;
         private MP3MediaInfo mediaInfo;

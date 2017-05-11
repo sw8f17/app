@@ -33,6 +33,7 @@ import rocks.stalin.android.app.MusicService;
 import rocks.stalin.android.app.model.MusicProvider;
 import rocks.stalin.android.app.model.MusicProviderSource;
 import rocks.stalin.android.app.network.MessageConnection;
+import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.MediaIDHelper;
 
@@ -66,6 +67,7 @@ public class RemotePlayback implements Playback, AudioManager.OnAudioFocusChange
 
     private final Context mContext;
     private final WifiManager.WifiLock mWifiLock;
+    private PeriodicPollOffsetProvider timeProvider;
     private int mState;
     private boolean mPlayOnFocusGain;
     private Callback mCallback;
@@ -97,13 +99,14 @@ public class RemotePlayback implements Playback, AudioManager.OnAudioFocusChange
         }
     };
 
-    public RemotePlayback(Context context, MusicProvider musicProvider) {
+    public RemotePlayback(Context context, MusicProvider musicProvider, PeriodicPollOffsetProvider timeProvider) {
         this.mContext = context;
         this.mMusicProvider = musicProvider;
         this.mAudioManager = (AudioManager) context.getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
         // Create the Wifi lock (this does not acquire the lock, this just creates it)
         this.mWifiLock = ((WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE))
                 .createWifiLock(WifiManager.WIFI_MODE_FULL, "smus_lock");
+        this.timeProvider = timeProvider;
         this.mState = PlaybackStateCompat.STATE_NONE;
     }
 
@@ -512,7 +515,7 @@ public class RemotePlayback implements Playback, AudioManager.OnAudioFocusChange
     public void addClient(MessageConnection connection) {
         if(mState != PlaybackStateCompat.STATE_STOPPED && mState != PlaybackStateCompat.STATE_NONE)
             throw new RuntimeException("You can't add a client while playing... yet");
-        RemoteMixer remoteMixer = new RemoteMixer(connection);
+        RemoteMixer remoteMixer = new RemoteMixer(connection, timeProvider);
         createMediaPlayerIfNeeded();
         mediaPlayer.addMixer(remoteMixer);
     }

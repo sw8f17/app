@@ -1,25 +1,21 @@
 package rocks.stalin.android.app.playback;
 
-import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 
 import java.io.IOException;
-import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 
 import okio.ByteString;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.network.MessageConnection;
 import rocks.stalin.android.app.network.Messageable;
-import rocks.stalin.android.app.playback.actions.PlayAction;
+import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
 import rocks.stalin.android.app.playback.actions.TimedAction;
 import rocks.stalin.android.app.proto.Music;
-import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.proto.Timestamp;
 import rocks.stalin.android.app.utils.LogHelper;
-import rocks.stalin.android.app.utils.NetworkHelper;
 import rocks.stalin.android.app.utils.time.Clock;
 
 /**
@@ -31,17 +27,19 @@ class RemoteMixer implements AudioMixer {
     private MessageConnection connection;
 
     MixerHandler thread;
+    private PeriodicPollOffsetProvider timeService;
 
-    public RemoteMixer(MessageConnection connection) {
+    public RemoteMixer(MessageConnection connection, PeriodicPollOffsetProvider timeService) {
         this.connection = connection;
         thread = new MixerHandler(connection);
+        this.timeService = timeService;
         thread.start();
     }
 
     @Override
     public void pushFrame(MP3MediaInfo mediaInfo, Clock.Instant nextTime, ByteBuffer read) {
-        Clock.Instant correctedNextTime = nextTime.add(NetworkHelper.offset);
-        LogHelper.i(TAG, "Corrected time ", nextTime, " by ", NetworkHelper.offset, " to ", correctedNextTime);
+        Clock.Instant correctedNextTime = nextTime.add(timeService.getOffset());
+        LogHelper.i(TAG, "Corrected time ", nextTime, " by ", timeService.getOffset(), " to ", correctedNextTime);
         Timestamp timestampMessage = new Timestamp.Builder()
                 .millis(correctedNextTime.getMillis())
                 .nanos(correctedNextTime.getNanos())

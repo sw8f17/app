@@ -72,15 +72,17 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
                     try {
                         AudioTimestamp timestamp = new AudioTimestamp();
                         Clock.Instant now;
+                        long playbackPosition;
                         if (at.getTimestamp(timestamp)) {
                             now = Clock.fromNanos(timestamp.nanoTime);
+                            playbackPosition = timestamp.framePosition;
                         } else {
                             now = Clock.getTime();
+                            playbackPosition = at.getPlaybackHeadPosition();
                         }
 
                         LogHelper.i("VIZ-ROBOT", "PlayHead:", now);
 
-                        long playbackPosition = timestamp.framePosition;
                         int space = (int) ((at.getPlaybackHeadPosition() + at.getBufferSizeInFrames()) - bufferStart);
 
                         Clock.Duration expectedEnd = mediaInfo.timeToPlayBytes((bufferStart - playbackPosition) * mediaInfo.getSampleSize());
@@ -132,7 +134,7 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
 
         atLock.lock();
         int minBuffer = AudioTrack.getMinBufferSize((int) mediaInfo.sampleRate, channelMask, AudioFormat.ENCODING_PCM_16BIT);
-        minBuffer = minBuffer < 8192 ? minBuffer * (8192 / minBuffer + 1) : minBuffer;
+        minBuffer = minBuffer < 16384 ? minBuffer * (16384 / minBuffer + 1) : minBuffer;
 
         at = new AudioTrack.Builder()
                 .setBufferSizeInBytes(minBuffer)

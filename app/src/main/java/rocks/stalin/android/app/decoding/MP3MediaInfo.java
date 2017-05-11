@@ -34,6 +34,6 @@ public class MP3MediaInfo {
     }
 
     public int bytesPlayedInTime(Clock.Duration duration) {
-        return (int) ((sampleRate * duration.inMillis() * getSampleSize()) / 1000);
+        return (int) ((sampleRate * duration.inNanos() * getSampleSize()) / 1000000000);
     }
 }

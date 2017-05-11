@@ -1,19 +1,18 @@
 package rocks.stalin.android.app;
 
 import android.app.Service;
-import android.content.ComponentName;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Debug;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.support.annotation.Nullable;
-
-import java.io.IOException;
 
 import rocks.stalin.android.app.decoding.MP3Encoding;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.network.MessageConnection;
+import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
+import rocks.stalin.android.app.network.SntpOffsetSource;
 import rocks.stalin.android.app.network.WifiP2PMessageClient;
 import rocks.stalin.android.app.playback.LocalAudioMixer;
 import rocks.stalin.android.app.playback.LocalSoundSink;
@@ -27,7 +26,6 @@ import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.proto.SongChangeCommand;
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
-import rocks.stalin.android.app.utils.NetworkHelper;
 import rocks.stalin.android.app.utils.time.Clock;
 
 /**
@@ -47,6 +45,10 @@ public class ClientMusicService extends Service {
     private MessageConnection connection = null;
     private LocalAudioMixer localAudioMixer;
     private LocalSoundSink sink;
+    private PeriodicPollOffsetProvider timeService;
+
+    private PowerManager.WakeLock wakeLock;
+
 
     @Nullable
     @Override
@@ -64,12 +66,19 @@ public class ClientMusicService extends Service {
         localAudioMixer = new LocalAudioMixer();
         sink = new LocalSoundSink(localAudioMixer);
         Debug.startMethodTracing("trce");
+
+        timeService = new PeriodicPollOffsetProvider(new SntpOffsetSource());
+        timeService.start();
+
+        PowerManager pm = getSystemService(PowerManager.class);
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SMUS-Client");
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent.getAction();
         if (action.equals(ACTION_CONNECT)) {
+            wakeLock.acquire();
             LogHelper.v(TAG, "Connecting to server");
 
             String hostname = intent.getStringExtra(CONNECT_HOST_NAME);
@@ -89,8 +98,8 @@ public class ClientMusicService extends Service {
                         @Override
                         public void packetReceived(PlayCommand message) {
                             Clock.Instant time = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
-                            Clock.Instant correctedTime = time.sub(NetworkHelper.offset);
-                            LogHelper.i(TAG, "Corrected time ", time, " by ", NetworkHelper.offset, " to ", correctedTime);
+                            Clock.Instant correctedTime = time.sub(timeService.getOffset());
+                            LogHelper.i(TAG, "Corrected time ", time, " by ", timeService.getOffset(), " to ", correctedTime);
                             PlayAction action = new PlayAction(correctedTime);
                             localAudioMixer.pushAction(action);
                         }
@@ -99,7 +108,7 @@ public class ClientMusicService extends Service {
                         @Override
                         public void packetReceived(PauseCommand message) {
                             Clock.Instant time = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
-                            Clock.Instant correctedTime = time.sub(NetworkHelper.offset);
+                            Clock.Instant correctedTime = time.sub(timeService.getOffset());
                             PauseAction action = new PauseAction(correctedTime);
                             localAudioMixer.pushAction(action);
                         }
@@ -108,7 +117,7 @@ public class ClientMusicService extends Service {
                         @Override
                         public void packetReceived(SongChangeCommand message) {
                             Clock.Instant time = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
-                            Clock.Instant correctedTime = time.sub(NetworkHelper.offset);
+                            Clock.Instant correctedTime = time.sub(timeService.getOffset());
 
                             MediaInfo newInfo = message.songmetadata.mediainfo;
 
@@ -123,20 +132,23 @@ public class ClientMusicService extends Service {
                         @Override
                         public void packetReceived(Music message) {
                             Clock.Instant playTime = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
-                            Clock.Instant correctedPlayTime = playTime.sub(NetworkHelper.offset);
-                            LogHelper.i(TAG, "Corrected time ", playTime, " by ", NetworkHelper.offset, " to ", correctedPlayTime);
+                            Clock.Instant correctedPlayTime = playTime.sub(timeService.getOffset());
+                            LogHelper.i(TAG, "Corrected time ", playTime, " by ", timeService.getOffset(), " to ", correctedPlayTime);
                             localAudioMixer.pushFrame(new MP3MediaInfo(44100, 1, 0, MP3Encoding.UNSIGNED16), correctedPlayTime, message.data.asByteBuffer());
                         }
                     });
                 }
             });
         }
-        return START_STICKY;
+        return START_REDELIVER_INTENT;
     }
 
     @Override
     public void onDestroy() {
         sink.release();
+        if(wakeLock.isHeld())
+            wakeLock.release();
+        timeService.release();
         Debug.stopMethodTracing();
         super.onDestroy();
     }

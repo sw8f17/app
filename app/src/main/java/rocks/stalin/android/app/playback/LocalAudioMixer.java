@@ -70,7 +70,7 @@ public class LocalAudioMixer implements AudioMixer {
         //overlap at some point we will have to do some actual mixing - JJ 05/05-2017
         int offset = mediaInfo.bytesPlayedInTime(time.timeBetween(key));
         if(offset % mediaInfo.getSampleSize() != 0) {
-            //*
+            /*
             offset += mediaInfo.getSampleSize() - (offset % mediaInfo.getSampleSize());
             /*/
             offset -= offset % mediaInfo.getSampleSize();
