@@ -3,6 +3,8 @@ package rocks.stalin.android.app.playback;
 import java.nio.ByteBuffer;
 import java.util.PriorityQueue;
 import java.util.TreeMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.playback.actions.TimedAction;
@@ -18,6 +20,9 @@ public class LocalAudioMixer implements AudioMixer {
     private static final String MACH_TAG = "VIZ-ROBOT";
 
     private TreeMap<Clock.Instant, ByteBuffer> buffer;
+    private Lock bufferLock = new ReentrantLock(true);
+    private ByteBuffer nativeBuffer;
+    private Clock.Instant bufferStart;
     private PriorityQueue<TimedAction> actions;
 
     private NewActionListener newActionListener;
@@ -32,10 +37,39 @@ public class LocalAudioMixer implements AudioMixer {
     }
 
     @Override
-    public void pushFrame(MP3MediaInfo mediaInfo, Clock.Instant nextTime, ByteBuffer read) {
-        LogHelper.i(MACH_TAG, "Frame:", nextTime, "@", mediaInfo.timeToPlayBytes(read.capacity()));
+    public void change(MP3MediaInfo mediaInfo) {
+        //Hardcoded buffer max size of 10
+        nativeBuffer = ByteBuffer.allocate((int) (mediaInfo.frameSize * 10));
+        bufferStart = null;
+    }
 
-        buffer.put(nextTime, read);
+    @Override
+    public void pushFrame(MP3MediaInfo mediaInfo, Clock.Instant playTime, ByteBuffer soundData) {
+        LogHelper.i(MACH_TAG, "Frame:", playTime, "@", mediaInfo.timeToPlayBytes(soundData.capacity()));
+
+
+        bufferLock.lock();
+        try {
+
+            if(bufferStart == null)
+                bufferStart = playTime;
+
+            if(playTime.before(bufferStart))
+                throw new IllegalArgumentException("We can't mix in a frame earlier than the start of the mixer buffer");
+
+            Clock.Duration diff = bufferStart.timeBetween(playTime);
+            int offset = mediaInfo.bytesPlayedInTime(diff);
+
+            nativeBuffer.position(offset);
+
+            nativeBuffer.compact();
+            nativeBuffer.put(soundData);
+
+        } finally {
+            bufferLock.unlock();
+        }
+
+        buffer.put(playTime, soundData);
     }
 
     @Override
