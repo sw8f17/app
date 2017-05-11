@@ -47,7 +47,7 @@ class RemoteMixer implements AudioMixer {
                 .nanos(correctedNextTime.getNanos())
                 .build();
         Music musicMessage = new Music.Builder()
-                .data(ByteString.of(read.array(), read.position(), read.limit()))
+                .data(ByteString.of(read))
                 .playtime(timestampMessage)
                 .build();
         try {

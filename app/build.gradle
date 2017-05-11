@@ -13,6 +13,12 @@ buildscript {
 }
 
 android {
+    signingConfigs {
+        me {
+            keyAlias 'me'
+            keyPassword 'password'
+        }
+    }
     compileSdkVersion 25
     buildToolsVersion '25.0.2'
     defaultConfig {
@@ -39,11 +45,12 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            //proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     externalNativeBuild {
@@ -59,7 +66,7 @@ android {
 println "Sources : " + android.sourceSets.main.java
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile fileTree(include: ['*.jar'], dir: 'libs')
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
@@ -70,7 +77,7 @@ dependencies {
     compile 'com.android.support:mediarouter-v7:25.3.0'
     compile 'com.android.support:design:25.3.0'
     compile 'com.squareup.wire:wire-runtime:2.2.0'
-
+    compile 'com.squareup.okio:okio:1.12.0'
     testCompile 'junit:junit:4.12'
 }
 

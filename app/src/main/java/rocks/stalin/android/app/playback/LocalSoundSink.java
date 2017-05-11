@@ -2,6 +2,7 @@ package rocks.stalin.android.app.playback;
 
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
+import android.media.AudioManager;
 import android.media.AudioTimestamp;
 import android.media.AudioTrack;
 
@@ -56,9 +57,19 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
                     ByteBuffer buffer;
                     try {
                         audioWriteLock.acquire();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
 
+                    try {
                         atLock.lockInterruptibly();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
 
+                    try {
                         AudioTimestamp timestamp = new AudioTimestamp();
                         Clock.Instant now;
                         if (at.getTimestamp(timestamp)) {
@@ -74,28 +85,20 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
 
                         Clock.Duration expectedEnd = mediaInfo.timeToPlayBytes((bufferStart - playbackPosition) * mediaInfo.getSampleSize());
 
-                        LogHelper.i(TAG, "At ", now, ", I'm expecting to run out of data in ", expectedEnd, ", or at ", now.add(expectedEnd));
-                        LogHelper.i(TAG, "I presented ", timestamp.framePosition, " at ", now, " but i'm actually at ", at.getPlaybackHeadPosition());
+                        //LogHelper.i(TAG, "At ", now, ", I'm expecting to run out of data in ", expectedEnd, ", or at ", now.add(expectedEnd));
+                        //LogHelper.i(TAG, "I presented ", timestamp.framePosition, " at ", now, " but i'm actually at ", at.getPlaybackHeadPosition());
 
                         buffer = LocalSoundSink.this.mixer.readFor(mediaInfo, now.add(expectedEnd), space);
 
                         written = at.write(buffer, buffer.limit(), AudioTrack.WRITE_NON_BLOCKING);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        LogHelper.i(TAG, "Audio feeder thread interrupted");
-                        return;
                     } finally {
                         atLock.unlock();
                     }
-
-                    if (atLock.tryLock())
-                        atLock.unlock();
 
                     //This sometimes happens when we pause after while it's running.
                     //Not a huge issue, but we should find some way fo fixing it -JJ 10/05-2017
                     if (written != buffer.limit()) {
                         LogHelper.e(TAG, "Buffer overflow!");
-                        throw new RuntimeException(String.format("Buffer overflow! Had: %d, but only wrote %d", buffer.limit(), written));
                     }
                     bufferStart += written / mediaInfo.getSampleSize();
                 }
@@ -114,18 +117,25 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
                 .setSampleRate((int) mediaInfo.sampleRate)
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT);
 
+        int channelMask;
         switch(mediaInfo.channels) {
             case 1:
-                format.setChannelMask(AudioFormat.CHANNEL_OUT_MONO);
+                channelMask = AudioFormat.CHANNEL_OUT_MONO;
                 break;
             case 2:
-                format.setChannelMask(AudioFormat.CHANNEL_OUT_STEREO);
+                channelMask = AudioFormat.CHANNEL_OUT_STEREO;
                 break;
+            default:
+                throw new IllegalArgumentException("Channel count unsupported " + mediaInfo.channels);
         }
+        format.setChannelMask(channelMask);
 
         atLock.lock();
+        int minBuffer = AudioTrack.getMinBufferSize((int) mediaInfo.sampleRate, channelMask, AudioFormat.ENCODING_PCM_16BIT);
+        minBuffer = minBuffer < 8192 ? minBuffer * (8192 / minBuffer + 1) : minBuffer;
 
         at = new AudioTrack.Builder()
+                .setBufferSizeInBytes(minBuffer)
                 .setAudioAttributes(new AudioAttributes.Builder()
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -234,6 +244,10 @@ public class LocalSoundSink implements LocalAudioMixer.NewActionListener {
             actionLock.unlock();
         }
         return false;
+    }
+
+    public void setVolume(float gain1, float gain2) {
+        at.setStereoVolume(gain1, gain2);
     }
 
     private static class ActionTask extends TimerTask {

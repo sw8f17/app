@@ -5,6 +5,7 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.os.Debug;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 
@@ -62,6 +63,7 @@ public class ClientMusicService extends Service {
 
         localAudioMixer = new LocalAudioMixer();
         sink = new LocalSoundSink(localAudioMixer);
+        Debug.startMethodTracing("trce");
     }
 
     @Override
@@ -135,6 +137,7 @@ public class ClientMusicService extends Service {
     @Override
     public void onDestroy() {
         sink.release();
+        Debug.stopMethodTracing();
         super.onDestroy();
     }
 }

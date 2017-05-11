@@ -51,7 +51,7 @@ public class LocalAudioMixer implements AudioMixer {
 
     public ByteBuffer readFor(MP3MediaInfo mediaInfo, Clock.Instant time, int samples) {
         int missingBytes = samples * mediaInfo.getSampleSize();
-        LogHelper.i(TAG, "Reading ", missingBytes, " bytes from the timed buffer");
+        //LogHelper.i(TAG, "Reading ", missingBytes, " bytes from the timed buffer");
 
         ByteBuffer mixedBuffer = ByteBuffer.allocate(missingBytes);
 
@@ -76,7 +76,7 @@ public class LocalAudioMixer implements AudioMixer {
             offset -= offset % mediaInfo.getSampleSize();
             //*/
         }
-        LogHelper.i(TAG, "So i guess we played ", offset, " bytes in ", time.timeBetween(key), ", at ", mediaInfo.sampleRate, "Hz * ", mediaInfo.getSampleSize());
+        //LogHelper.i(TAG, "So i guess we played ", offset, " bytes in ", time.timeBetween(key), ", at ", mediaInfo.sampleRate, "Hz * ", mediaInfo.getSampleSize());
 
         while(missingBytes > 0) {
             ByteBuffer accurateBuffer = buffer.get(key);
@@ -90,7 +90,7 @@ public class LocalAudioMixer implements AudioMixer {
             }
             int takeFromHere = Math.min(missingBytes, accurateBuffer.limit() - offset);
 
-            LogHelper.i(TAG, "Mixing in ", takeFromHere, " bytes at ", mixedBuffer.position(), " from ", key);
+            //LogHelper.i(TAG, "Mixing in ", takeFromHere, " bytes at ", mixedBuffer.position(), " from ", key);
 
             ByteBuffer mine = accurateBuffer.duplicate();
             mine.position(offset);
