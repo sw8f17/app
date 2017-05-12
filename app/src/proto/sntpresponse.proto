@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package rocks.stalin.scotty;
+
+import "timestamp.proto";
+
+option java_package = "rocks.stalin.android.app.proto";
+
+message SntpResponse {
+    // Time at which the request was sent
+    Timestamp requestSent = 1;
+
+    // Server time at which the request was received
+    Timestamp requestReceived = 2;
+
+    // Server time at which the response was sent
+    Timestamp responseSent = 3;
+}

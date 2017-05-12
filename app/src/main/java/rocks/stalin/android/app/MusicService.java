@@ -49,7 +49,10 @@ import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.framework.concurrent.TimeAwareTaskExecutor;
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
+import rocks.stalin.android.app.network.LocalOffsetService;
 import rocks.stalin.android.app.network.MessageConnection;
+import rocks.stalin.android.app.network.OffsetSource;
+import rocks.stalin.android.app.network.WifiP2PMessageServer;
 import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
 import rocks.stalin.android.app.network.SntpOffsetSource;
 import rocks.stalin.android.app.network.TCPServerConnectionFactory;
@@ -144,8 +147,9 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
     private RemotePlayback remotePlayback;
 
+    private WifiP2PMessageServer server;
+    private OffsetSource timeProvider;
     private WifiP2pServiceAnnouncer server;
-    private PeriodicPollOffsetProvider timeProvider;
 
     /*
      * (non-Javadoc)
@@ -156,10 +160,8 @@ public class MusicService extends MediaBrowserServiceCompat implements
         super.onCreate();
         LogHelper.d(TAG, "onCreate");
 
+        timeProvider = new LocalOffsetService();
         executorService = ServiceLocator.getInstance().getService(TaskExecutor.class);
-
-        timeProvider = new PeriodicPollOffsetProvider(new SntpOffsetSource());
-        timeProvider.start();
 
         mMusicProvider = new MusicProvider(new ExternalStorageSource(getApplicationContext()));
         //mMusicProvider = new MusicProvider();
@@ -292,7 +294,6 @@ public class MusicService extends MediaBrowserServiceCompat implements
         mDelayedStopHandler.removeCallbacksAndMessages(null);
         mSession.release();
 
-        timeProvider.release();
         server.stop();
     }
 

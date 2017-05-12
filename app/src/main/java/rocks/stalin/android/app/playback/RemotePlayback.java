@@ -33,7 +33,7 @@ import rocks.stalin.android.app.MusicService;
 import rocks.stalin.android.app.model.MusicProvider;
 import rocks.stalin.android.app.model.MusicProviderSource;
 import rocks.stalin.android.app.network.MessageConnection;
-import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
+import rocks.stalin.android.app.network.OffsetSource;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.MediaIDHelper;
 
@@ -67,7 +67,7 @@ public class RemotePlayback implements Playback, AudioManager.OnAudioFocusChange
 
     private final Context mContext;
     private final WifiManager.WifiLock mWifiLock;
-    private PeriodicPollOffsetProvider timeProvider;
+    private OffsetSource timeProvider;
     private int mState;
     private boolean mPlayOnFocusGain;
     private Callback mCallback;
@@ -99,7 +99,7 @@ public class RemotePlayback implements Playback, AudioManager.OnAudioFocusChange
         }
     };
 
-    public RemotePlayback(Context context, MusicProvider musicProvider, PeriodicPollOffsetProvider timeProvider) {
+    public RemotePlayback(Context context, MusicProvider musicProvider, OffsetSource timeProvider) {
         this.mContext = context;
         this.mMusicProvider = musicProvider;
         this.mAudioManager = (AudioManager) context.getApplicationContext().getSystemService(Context.AUDIO_SERVICE);

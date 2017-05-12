@@ -14,11 +14,14 @@ import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.decoding.MP3Encoding;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.framework.functional.Consumer;
+import rocks.stalin.android.app.network.LocalNetworkSntpOffsetSource;
 import rocks.stalin.android.app.network.MessageConnection;
 import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
 import rocks.stalin.android.app.network.SntpOffsetSource;
 import rocks.stalin.android.app.network.WifiP2PConnectionFactory;
 import rocks.stalin.android.app.network.WifiP2PManagerFacade;
+import rocks.stalin.android.app.network.OffsetSource;
+import rocks.stalin.android.app.network.WifiP2PMessageClient;
 import rocks.stalin.android.app.playback.LocalAudioMixer;
 import rocks.stalin.android.app.playback.LocalSoundSink;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
@@ -50,7 +53,7 @@ public class ClientMusicService extends Service {
 
     private LocalAudioMixer localAudioMixer;
     private LocalSoundSink sink;
-    private PeriodicPollOffsetProvider timeService;
+    private LocalNetworkSntpOffsetSource timeService = null;
 
     private PowerManager.WakeLock wakeLock;
 
@@ -77,9 +80,6 @@ public class ClientMusicService extends Service {
         sink = new LocalSoundSink(localAudioMixer);
         Debug.startMethodTracing("trce");
 
-        timeService = new PeriodicPollOffsetProvider(new SntpOffsetSource());
-        timeService.start();
-
         PowerManager pm = getSystemService(PowerManager.class);
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SMUS-Client");
     }
@@ -99,8 +99,9 @@ public class ClientMusicService extends Service {
             WifiP2PConnectionFactory connectionFactory = new WifiP2PConnectionFactory(this, manager, executorService);
             ObservableFuture<MessageConnection> connectionFuture = connectionFactory.connect(hostname, port);
             connectionFuture.setListener(new Consumer<MessageConnection>(){
-                @Override
+
                 public void call(MessageConnection connection) {
+                    timeService = new LocalNetworkSntpOffsetSource(connection);
                     connection.addHandler(Welcome.class, new MessageConnection.MessageListener<Welcome, Welcome.Builder>() {
                         @Override
                         public void packetReceived(Welcome message) {
@@ -161,7 +162,8 @@ public class ClientMusicService extends Service {
         sink.release();
         if(wakeLock.isHeld())
             wakeLock.release();
-        timeService.release();
+        if(timeService != null)
+            timeService.release();
         Debug.stopMethodTracing();
         super.onDestroy();
     }
