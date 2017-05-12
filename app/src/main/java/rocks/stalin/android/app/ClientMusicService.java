@@ -53,7 +53,7 @@ public class ClientMusicService extends Service {
 
     private LocalAudioMixer localAudioMixer;
     private LocalSoundSink sink;
-    private LocalNetworkSntpOffsetSource timeService = null;
+    private OffsetSource timeService = null;
 
     private PowerManager.WakeLock wakeLock;
 
@@ -163,7 +163,7 @@ public class ClientMusicService extends Service {
         if(wakeLock.isHeld())
             wakeLock.release();
         if(timeService != null)
-            timeService.release();
+            timeService.tearDown();
         Debug.stopMethodTracing();
         super.onDestroy();
     }

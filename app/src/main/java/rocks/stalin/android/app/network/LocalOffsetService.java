@@ -7,4 +7,9 @@ public class LocalOffsetService implements OffsetSource {
     public Clock.Duration getOffset() {
         return new Clock.Duration(0L, 0);
     }
+
+    @Override
+    public void tearDown() {
+
+    }
 }

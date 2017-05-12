@@ -32,8 +32,7 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource {
                 Clock.Instant responseSent = new Clock.Instant(message.responseSent.millis, message.responseSent.nanos);
                 Clock.Instant responseReceived = Clock.getTime();
 
-                // clockOffset = ((receiveTime - originateTime) + (transmitTime - responseTime))/2;
-
+                // ((T1 - T0) + (T2 - T3)) / 2
                 Clock.Duration requestOffset = requestSent.timeBetween(requestReceived);
                 Clock.Duration responseOffset = responseSent.timeBetween(responseReceived);
                 Clock.Duration sum = requestOffset.add(responseOffset);
@@ -59,7 +58,8 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource {
         return latestOffset;
     }
 
-    public void release() {
+    @Override
+    public void tearDown() {
         taskHandle.cancel(true);
         scheduler.shutdown();
     }
