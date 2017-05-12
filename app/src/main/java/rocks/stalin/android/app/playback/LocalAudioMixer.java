@@ -1,5 +1,8 @@
 package rocks.stalin.android.app.playback;
 
+import com.google.android.gms.cast.MediaInfo;
+
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.PriorityQueue;
 import java.util.TreeMap;
@@ -19,7 +22,6 @@ public class LocalAudioMixer implements AudioMixer {
     private static final String TAG = LogHelper.makeLogTag(LocalAudioMixer.class);
     private static final String MACH_TAG = "VIZ-ROBOT";
 
-    private TreeMap<Clock.Instant, ByteBuffer> buffer;
     private Lock bufferLock = new ReentrantLock(true);
     private ByteBuffer nativeBuffer;
     private Clock.Instant bufferStart;
@@ -27,8 +29,9 @@ public class LocalAudioMixer implements AudioMixer {
 
     private NewActionListener newActionListener;
 
+    private MP3MediaInfo bufferMediaInfo;
+
     public LocalAudioMixer() {
-        buffer = new TreeMap<>();
         actions = new PriorityQueue<>();
     }
 
@@ -39,37 +42,67 @@ public class LocalAudioMixer implements AudioMixer {
     @Override
     public void change(MP3MediaInfo mediaInfo) {
         //Hardcoded buffer max size of 10
-        nativeBuffer = ByteBuffer.allocate((int) (mediaInfo.frameSize * 10));
-        bufferStart = null;
+        bufferLock.lock();
+        try {
+            nativeBuffer = ByteBuffer.allocate((int) (mediaInfo.frameSize * 10));
+            bufferStart = null;
+            this.bufferMediaInfo = mediaInfo;
+        } finally {
+            bufferLock.unlock();
+        }
     }
 
     @Override
-    public void pushFrame(MP3MediaInfo mediaInfo, Clock.Instant playTime, ByteBuffer soundData) {
-        LogHelper.i(MACH_TAG, "Frame:", playTime, "@", mediaInfo.timeToPlayBytes(soundData.capacity()));
+    public void pushFrame(MP3MediaInfo mediaInfo, Clock.Instant timeToPlay, ByteBuffer soundData) {
+        LogHelper.i(MACH_TAG, "Frame:", timeToPlay, "@", mediaInfo.timeToPlayBytes(soundData.capacity()));
 
 
         bufferLock.lock();
         try {
-
             if(bufferStart == null)
-                bufferStart = playTime;
+                bufferStart = timeToPlay;
 
-            if(playTime.before(bufferStart))
+            //Offset the time of the start of the buffer to fit with the new start after a compact
+            int position = nativeBuffer.position();
+            Clock.Duration playTimeInto = bufferMediaInfo.timeToPlayBytes(position);
+
+            bufferStart = bufferStart.add(playTimeInto);
+
+            if(timeToPlay.before(bufferStart))
                 throw new IllegalArgumentException("We can't mix in a frame earlier than the start of the mixer buffer");
 
-            Clock.Duration diff = bufferStart.timeBetween(playTime);
+            //Compact the buffer, copying all the remaining data to the start of the buffer
+            //also sets the position to the end of the limit to make us ready for the next write
+            nativeBuffer.compact();
+
+            //Put the new sounddata into the buffer at the correct offset to fit with the time.
+            Clock.Duration diff = bufferStart.timeBetween(timeToPlay);
             int offset = mediaInfo.bytesPlayedInTime(diff);
+            if(offset % bufferMediaInfo.getSampleSize() != 0) {
+                offset -= offset % bufferMediaInfo.getSampleSize();
+            }
+
+            if(nativeBuffer.position() != offset) {
+                LogHelper.w(TAG, "Bad offset, we are wrong by ", offset - nativeBuffer.position());
+                if(Math.abs(offset - nativeBuffer.position()) < 1000)
+                    offset = nativeBuffer.position();
+            }
 
             nativeBuffer.position(offset);
 
-            nativeBuffer.compact();
+            int bufferSpace = nativeBuffer.limit() - nativeBuffer.position();
+            if(soundData.limit() - soundData.position() > bufferSpace) {
+                LogHelper.w(TAG, "Sound buffer overflowed, discarding bytes");
+                soundData.limit(soundData.position() + bufferSpace);
+            }
             nativeBuffer.put(soundData);
+
+            //Flip the buffer to make us ready for the next reads
+            nativeBuffer.flip();
 
         } finally {
             bufferLock.unlock();
         }
-
-        buffer.put(playTime, soundData);
     }
 
     @Override
@@ -85,68 +118,50 @@ public class LocalAudioMixer implements AudioMixer {
 
     public ByteBuffer readFor(MP3MediaInfo mediaInfo, Clock.Instant time, int samples) {
         int missingBytes = samples * mediaInfo.getSampleSize();
-        //LogHelper.i(TAG, "Reading ", missingBytes, " bytes from the timed buffer");
+        LogHelper.i(TAG, "Reading ", missingBytes, " bytes from the timed buffer");
 
         ByteBuffer mixedBuffer = ByteBuffer.allocate(missingBytes);
 
-        Clock.Instant key = time;
-        if(buffer.get(key) == null) {
-            key = buffer.lowerKey(key);
-            if(key == null) {
-                LogHelper.w(TAG, "I don't have a frame for the timestamp: ", time, " My earliest is at ", buffer.higherKey(time));
-                mixedBuffer.flip().limit(mixedBuffer.capacity());
-                return mixedBuffer;
-            }
+        if(bufferStart == null) {
+            //If we don't have a start yet, we don't have any data
+            mixedBuffer.limit(missingBytes);
+            return mixedBuffer;
         }
 
-        //If any buffer starts in the middle, then it's always the case that its the first one
-        //this is only true because there's no overlap between the frames though, if we do have some
-        //overlap at some point we will have to do some actual mixing - JJ 05/05-2017
-        int offset = mediaInfo.bytesPlayedInTime(time.timeBetween(key));
-        if(offset % mediaInfo.getSampleSize() != 0) {
-            /*
-            offset += mediaInfo.getSampleSize() - (offset % mediaInfo.getSampleSize());
-            /*/
-            offset -= offset % mediaInfo.getSampleSize();
-            //*/
+        Clock.Duration diff = bufferStart.timeBetween(time);
+        int offset = bufferMediaInfo.bytesPlayedInTime(diff);
+        if(offset % bufferMediaInfo.getSampleSize() != 0) {
+            offset -= offset % bufferMediaInfo.getSampleSize();
         }
-        //LogHelper.i(TAG, "So i guess we played ", offset, " bytes in ", time.timeBetween(key), ", at ", mediaInfo.sampleRate, "Hz * ", mediaInfo.getSampleSize());
 
-        while(missingBytes > 0) {
-            ByteBuffer accurateBuffer = buffer.get(key);
-            if(offset > accurateBuffer.limit()) {
-                //It's possible that the last buffer didn't reach, yet another buffer might
-                //intersect later. For now it's pretty unlikely, so i'll just let it skip
-                // - JJ 05/05-2017
-                LogHelper.w(TAG, "The previous buffer didn't reach the start of my request, I did have something at ", key);
-                mixedBuffer.flip().limit(mixedBuffer.capacity());
-                return mixedBuffer;
-            }
-            int takeFromHere = Math.min(missingBytes, accurateBuffer.limit() - offset);
+        if(nativeBuffer.position() != offset) {
+            LogHelper.w(TAG, "We will be skipping, ", offset - nativeBuffer.position(), " bytes to be exact");
+            if(Math.abs(offset - nativeBuffer.position()) < 1000)
+                offset = nativeBuffer.position();
+        }
 
-            //LogHelper.i(TAG, "Mixing in ", takeFromHere, " bytes at ", mixedBuffer.position(), " from ", key);
-
-            ByteBuffer mine = accurateBuffer.duplicate();
-            mine.position(offset);
-            mine.limit(offset + takeFromHere);
-            mixedBuffer.put(mine);
-
-            missingBytes -= takeFromHere;
-            offset = 0;
-            key = buffer.higherKey(key);
-            if(key == null) {
-                LogHelper.w(TAG, "Shit, i guess we don't have anything to play");
-                break;
-            }
+        bufferLock.lock();
+        try{
+            nativeBuffer.position(offset);
+            LogHelper.i(TAG, "Getting ", missingBytes, " from ", nativeBuffer.limit() - nativeBuffer.position());
+            if(offset + missingBytes > nativeBuffer.limit())
+                throw new IllegalStateException("Buffer overrun, wanted " + (offset + missingBytes) + ", Had: " + nativeBuffer.limit());
+            ByteBuffer dupBuffer = nativeBuffer.duplicate();
+            dupBuffer.limit(offset + missingBytes);
+            mixedBuffer.put(dupBuffer);
+            nativeBuffer.position(dupBuffer.position());
+        } finally {
+            bufferLock.unlock();
         }
 
         mixedBuffer.flip();
-        mixedBuffer.limit(mixedBuffer.capacity());
         return mixedBuffer;
     }
 
     public void flush() {
-        buffer.clear();
+        if(nativeBuffer != null)
+            nativeBuffer.clear();
+        bufferStart = null;
     }
 
     public interface NewActionListener {
