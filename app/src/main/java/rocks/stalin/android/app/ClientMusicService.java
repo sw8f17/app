@@ -8,9 +8,11 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
 
-import rocks.stalin.android.app.concurrent.CachedTaskExecutor;
-import rocks.stalin.android.app.concurrent.SimpleTaskScheduler;
-import rocks.stalin.android.app.concurrent.TimeAwareTaskExecutor;
+import rocks.stalin.android.app.framework.ServiceLocator;
+import rocks.stalin.android.app.framework.concurrent.CachedTaskExecutor;
+import rocks.stalin.android.app.framework.concurrent.SimpleTaskScheduler;
+import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
+import rocks.stalin.android.app.framework.concurrent.TimeAwareTaskExecutor;
 import rocks.stalin.android.app.decoding.MP3Encoding;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.network.MessageConnection;
@@ -39,13 +41,13 @@ import rocks.stalin.android.app.utils.time.Clock;
 public class ClientMusicService extends Service {
     private static final String TAG = LogHelper.makeLogTag(ClientMusicService.class);
 
-    private final TimeAwareTaskExecutor executorService = new TimeAwareTaskExecutor(new SimpleTaskScheduler(10, "POOL-%d"), new CachedTaskExecutor());
-
     public static final String ACTION_CONNECT = "rocks.stalin.android.app.ACTION_CONNECT";
     public static final String ACTION_STOP = "rocks.stalin.android.app.ACTION_STOP";
 
     public static final String CONNECT_HOST_NAME = "CONNECT_HOST_NAME";
     public static final String CONNECT_PORT_NAME = "CONNECT_PORT_NAME";
+
+    private TaskExecutor executorService;
 
     private LocalAudioMixer localAudioMixer;
     private LocalSoundSink sink;
@@ -65,6 +67,9 @@ public class ClientMusicService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        executorService = ServiceLocator.getInstance().getService(TaskExecutor.class);
+
         WifiP2pManager rawManager = getSystemService(WifiP2pManager.class);
         WifiP2pManager.Channel channel = rawManager.initialize(this, getMainLooper(), null);
         manager = new WifiP2PManagerFacade(rawManager, channel);

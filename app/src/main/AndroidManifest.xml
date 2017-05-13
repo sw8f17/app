@@ -34,7 +34,8 @@
         android:theme="@style/SmusTheme"
         android:supportsRtl="false"
         tools:ignore="GoogleAppIndexingWarning"
-        android:fullBackupContent="@xml/backup_descriptor">
+        android:fullBackupContent="@xml/backup_descriptor"
+        android:name=".framework.Entrypoint">
 
         <meta-data
             android:name="com.google.android.gms.version"

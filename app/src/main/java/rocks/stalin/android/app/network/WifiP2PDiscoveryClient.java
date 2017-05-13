@@ -7,7 +7,7 @@ import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import java.util.HashMap;
 import java.util.Map;
 
-import rocks.stalin.android.app.concurrent.Lifecycle;
+import rocks.stalin.android.app.framework.concurrent.Lifecycle;
 import rocks.stalin.android.app.model.Group;
 import rocks.stalin.android.app.utils.LogHelper;
 
@@ -15,8 +15,8 @@ import rocks.stalin.android.app.utils.LogHelper;
  * Created by delusional on 5/12/17.
  */
 
-public class WifiP2PMarcoPolo implements Lifecycle {
-    private static final String TAG = LogHelper.makeLogTag(WifiP2PMarcoPolo.class);
+public class WifiP2PDiscoveryClient implements Lifecycle {
+    private static final String TAG = LogHelper.makeLogTag(WifiP2PDiscoveryClient.class);
 
     private final WifiP2PManagerFacade manager;
 
@@ -27,7 +27,7 @@ public class WifiP2PMarcoPolo implements Lifecycle {
 
     private boolean running = false;
 
-    public WifiP2PMarcoPolo(WifiP2PManagerFacade manager) {
+    public WifiP2PDiscoveryClient(WifiP2PManagerFacade manager) {
         this.manager = manager;
     }
 

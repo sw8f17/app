@@ -7,8 +7,8 @@ import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.widget.Toast;
 
-import rocks.stalin.android.app.concurrent.Lifecycle;
-import rocks.stalin.android.app.concurrent.TaskExecutor;
+import rocks.stalin.android.app.framework.concurrent.Lifecycle;
+import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.utils.LogHelper;
 
 /**

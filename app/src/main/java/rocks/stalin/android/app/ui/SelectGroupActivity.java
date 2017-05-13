@@ -16,7 +16,7 @@ import rocks.stalin.android.app.ClientMusicService;
 import rocks.stalin.android.app.R;
 import rocks.stalin.android.app.model.Group;
 import rocks.stalin.android.app.network.WifiP2PManagerFacade;
-import rocks.stalin.android.app.network.WifiP2PMarcoPolo;
+import rocks.stalin.android.app.network.WifiP2PDiscoveryClient;
 import rocks.stalin.android.app.utils.LogHelper;
 
 /**
@@ -31,7 +31,7 @@ public class SelectGroupActivity extends AppCompatActivity {
     List<Group> groupList = new ArrayList<>();
     GroupItemAdapter adapter;
 
-    WifiP2PMarcoPolo discoverer;
+    WifiP2PDiscoveryClient discoverer;
 
 
     @Override
@@ -43,8 +43,8 @@ public class SelectGroupActivity extends AppCompatActivity {
         WifiP2pManager.Channel channel = rawManager.initialize(this, getMainLooper(), null);
         WifiP2PManagerFacade manager = new WifiP2PManagerFacade(rawManager, channel);
 
-        discoverer = new WifiP2PMarcoPolo(manager);
-        discoverer.setListener(new WifiP2PMarcoPolo.DiscoverListener() {
+        discoverer = new WifiP2PDiscoveryClient(manager);
+        discoverer.setListener(new WifiP2PDiscoveryClient.DiscoverListener() {
             @Override
             public void onServerDiscovered(Group group) {
                 groupList.add(group);

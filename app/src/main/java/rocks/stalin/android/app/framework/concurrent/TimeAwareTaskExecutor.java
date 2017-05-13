@@ -1,9 +1,6 @@
-package rocks.stalin.android.app.concurrent;
-
-import com.google.android.gms.tasks.Task;
+package rocks.stalin.android.app.framework.concurrent;
 
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Created by delusional on 5/12/17.

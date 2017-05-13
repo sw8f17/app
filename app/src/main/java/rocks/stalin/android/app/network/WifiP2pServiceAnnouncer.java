@@ -9,13 +9,10 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-import rocks.stalin.android.app.concurrent.Lifecycle;
-import rocks.stalin.android.app.concurrent.TaskExecutor;
+import rocks.stalin.android.app.framework.concurrent.Lifecycle;
+import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.utils.LogHelper;
 
 import static android.content.ContentValues.TAG;

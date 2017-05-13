@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 
-import rocks.stalin.android.app.concurrent.TaskExecutor;
+import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.utils.LogHelper;
 
 /**

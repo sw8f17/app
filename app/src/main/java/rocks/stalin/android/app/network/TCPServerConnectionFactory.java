@@ -8,9 +8,9 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 
-import rocks.stalin.android.app.concurrent.Lifecycle;
-import rocks.stalin.android.app.concurrent.TaskExecutor;
-import rocks.stalin.android.app.concurrent.TimeAwareRunnable;
+import rocks.stalin.android.app.framework.concurrent.Lifecycle;
+import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
+import rocks.stalin.android.app.framework.concurrent.TimeAwareRunnable;
 import rocks.stalin.android.app.utils.LogHelper;
 
 /**

@@ -1,4 +1,4 @@
-package rocks.stalin.android.app.concurrent;
+package rocks.stalin.android.app.framework.concurrent;
 
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;

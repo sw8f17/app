@@ -42,9 +42,11 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
-import rocks.stalin.android.app.concurrent.CachedTaskExecutor;
-import rocks.stalin.android.app.concurrent.SimpleTaskScheduler;
-import rocks.stalin.android.app.concurrent.TimeAwareTaskExecutor;
+import rocks.stalin.android.app.framework.ServiceLocator;
+import rocks.stalin.android.app.framework.concurrent.CachedTaskExecutor;
+import rocks.stalin.android.app.framework.concurrent.SimpleTaskScheduler;
+import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
+import rocks.stalin.android.app.framework.concurrent.TimeAwareTaskExecutor;
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
 import rocks.stalin.android.app.network.MessageConnection;
@@ -108,8 +110,6 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
     private static final String TAG = LogHelper.makeLogTag(MusicService.class);
 
-    private final TimeAwareTaskExecutor executorService = new TimeAwareTaskExecutor(new SimpleTaskScheduler(10, "POOL-%d"), new CachedTaskExecutor());
-
     // Extra on MediaSession that contains the Cast device name currently connected to
     public static final String EXTRA_CONNECTED_CAST = "rocks.stalin.android.app.CAST_NAME";
     // The action of the incoming Intent indicating that it contains a command
@@ -127,6 +127,8 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
     // Delay stopSelf by using a handler.
     private static final int STOP_DELAY = 30000;
+
+    private TaskExecutor executorService;
 
     private MusicProvider mMusicProvider;
     private PlaybackManager mPlaybackManager;
@@ -153,6 +155,8 @@ public class MusicService extends MediaBrowserServiceCompat implements
     public void onCreate() {
         super.onCreate();
         LogHelper.d(TAG, "onCreate");
+
+        executorService = ServiceLocator.getInstance().getService(TaskExecutor.class);
 
         timeProvider = new PeriodicPollOffsetProvider(new SntpOffsetSource());
         timeProvider.start();

@@ -9,12 +9,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 
-import rocks.stalin.android.app.concurrent.Lifecycle;
-import rocks.stalin.android.app.concurrent.TaskExecutor;
-import rocks.stalin.android.app.concurrent.TimeAwareRunnable;
+import rocks.stalin.android.app.framework.concurrent.Lifecycle;
+import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
+import rocks.stalin.android.app.framework.concurrent.TimeAwareRunnable;
 import rocks.stalin.android.app.proto.Music;
 import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.proto.PlayCommand;
