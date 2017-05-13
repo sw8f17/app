@@ -12,6 +12,9 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
+import rocks.stalin.android.app.concurrent.Lifecycle;
+import rocks.stalin.android.app.concurrent.TaskExecutor;
+import rocks.stalin.android.app.concurrent.TimeAwareRunnable;
 import rocks.stalin.android.app.proto.Music;
 import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.proto.PlayCommand;
@@ -21,86 +24,74 @@ import rocks.stalin.android.app.proto.SongChangeCommand;
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
 
-public class MessageConnection {
+public class MessageConnection implements Lifecycle, TimeAwareRunnable {
     private static final String TAG = LogHelper.makeLogTag(MessageConnection.class);
+    private final TaskExecutor executorService;
 
     private Socket socket;
-    private final InetSocketAddress addr;
 
-    DataInputStream dis;
-    DataOutputStream dos;
+    private DataInputStream dis;
+    private DataOutputStream dos;
     private boolean running;
-    private Thread processThread;
 
     private SparseArray<MessageListener> handlers = new SparseArray<>();
 
-    public MessageConnection(Socket socket) {
+    public MessageConnection(Socket socket, TaskExecutor executorService) {
         this.socket = socket;
-        addr = null;
-    }
-
-    public MessageConnection(InetSocketAddress inetSocketAddress) {
-        socket = null;
-        addr = inetSocketAddress;
-    }
-
-    public void start() {
-        running = true;
-        processThread = new Thread() {
-            @Override
-            public void run() {
-                if(socket == null) {
-                    socket = new Socket();
-                    try {
-                        socket.setSoTimeout(0);
-                        socket.connect(addr);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                if(dis == null || dos == null) {
-                    try {
-                        InputStream stream = socket.getInputStream();
-                        dis = new DataInputStream(stream);
-
-                        OutputStream ostream = socket.getOutputStream();
-                        dos = new DataOutputStream(ostream);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                while(running) {
-                    try {
-                        int type = dis.readByte();
-                        int length = dis.readInt();
-                        if(length < 0){
-                            LogHelper.e(TAG, "We got a length of ", length, " which doesn't make any sense. The type was ", type, " by the way");
-                        }
-                        byte[] data = new byte[length];
-                        dis.readFully(data, 0, length);
-
-                        processMessage(type, data);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        LogHelper.e(TAG, "Error reading from master device");
-                        running = false;
-                    }
-                }
-            }
-        };
-        processThread.start();
-    }
-
-    public void stop() throws IOException {
-        running = false;
-        socket.close();
-        processThread.interrupt();
+        this.executorService = executorService;
 
         try {
-            processThread.join();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            InputStream stream = socket.getInputStream();
+            dis = new DataInputStream(stream);
+
+            OutputStream ostream = socket.getOutputStream();
+            dos = new DataOutputStream(ostream);
+        } catch (IOException e) {
+            LogHelper.e(TAG, "Failed creating I/O streams for the socket");
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
+    }
+
+    public void run() {
+        while(running) {
+            try {
+                int type = dis.readByte();
+                int length = dis.readInt();
+                if(length < 0){
+                    LogHelper.e(TAG, "We got a length of ", length, " which doesn't make any sense. The type was ", type, " by the way");
+                }
+                byte[] data = new byte[length];
+                dis.readFully(data, 0, length);
+
+                processMessage(type, data);
+            } catch (IOException e) {
+                LogHelper.e(TAG, "Error reading from master device");
+                e.printStackTrace();
+                running = false;
+            }
+        }
+    }
+
+    @Override
+    public void start() {
+        running = true;
+        executorService.submit(this);
+    }
+
+    @Override
+    public void stop() {
+        running = false;
+
+        try {
+            socket.close();
+        } catch (IOException e) {
+        }
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running;
     }
 
     public <M extends Message<M, B>, B extends Message.Builder<M, B>> void addHandler(Class<M> messageType, MessageListener<M,B> listener) {
@@ -146,7 +137,7 @@ public class MessageConnection {
         if(handler == null)
             LogHelper.w(TAG, "There's no handler for message of type ", type);
         if(handler != null && message != null) {
-            /**
+            /*
              * This is unsafe, since it's deserializing the network data.
              */
             handler.packetReceived(message);
@@ -159,6 +150,11 @@ public class MessageConnection {
         dos.writeInt(packetData.length);
         dos.write(packetData);
         dos.flush();
+    }
+
+    @Override
+    public boolean isLongRunning() {
+        return true;
     }
 
     public interface MessageListener<M extends Message<M, B>, B extends Message.Builder<M, B>> {

@@ -8,12 +8,16 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
 
+import rocks.stalin.android.app.concurrent.CachedTaskExecutor;
+import rocks.stalin.android.app.concurrent.SimpleTaskScheduler;
+import rocks.stalin.android.app.concurrent.TimeAwareTaskExecutor;
 import rocks.stalin.android.app.decoding.MP3Encoding;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.network.MessageConnection;
 import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
 import rocks.stalin.android.app.network.SntpOffsetSource;
-import rocks.stalin.android.app.network.WifiP2PMessageClient;
+import rocks.stalin.android.app.network.WifiP2PConnection;
+import rocks.stalin.android.app.network.WifiP2PManagerFacade;
 import rocks.stalin.android.app.playback.LocalAudioMixer;
 import rocks.stalin.android.app.playback.LocalSoundSink;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
@@ -35,19 +39,21 @@ import rocks.stalin.android.app.utils.time.Clock;
 public class ClientMusicService extends Service {
     private static final String TAG = LogHelper.makeLogTag(ClientMusicService.class);
 
+    private final TimeAwareTaskExecutor executorService = new TimeAwareTaskExecutor(new SimpleTaskScheduler(10, "POOL-%d"), new CachedTaskExecutor());
+
     public static final String ACTION_CONNECT = "rocks.stalin.android.app.ACTION_CONNECT";
     public static final String ACTION_STOP = "rocks.stalin.android.app.ACTION_STOP";
 
     public static final String CONNECT_HOST_NAME = "CONNECT_HOST_NAME";
     public static final String CONNECT_PORT_NAME = "CONNECT_PORT_NAME";
 
-    private WifiP2PMessageClient client;
-    private MessageConnection connection = null;
     private LocalAudioMixer localAudioMixer;
     private LocalSoundSink sink;
     private PeriodicPollOffsetProvider timeService;
 
     private PowerManager.WakeLock wakeLock;
+
+    private WifiP2PManagerFacade manager;
 
 
     @Nullable
@@ -59,9 +65,9 @@ public class ClientMusicService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        WifiP2pManager manager = getSystemService(WifiP2pManager.class);
-        client = new WifiP2PMessageClient(manager);
-        client.initialize(this);
+        WifiP2pManager rawManager = getSystemService(WifiP2pManager.class);
+        WifiP2pManager.Channel channel = rawManager.initialize(this, getMainLooper(), null);
+        manager = new WifiP2PManagerFacade(rawManager, channel);
 
         localAudioMixer = new LocalAudioMixer();
         sink = new LocalSoundSink(localAudioMixer);
@@ -84,10 +90,10 @@ public class ClientMusicService extends Service {
             String hostname = intent.getStringExtra(CONNECT_HOST_NAME);
             int port = intent.getIntExtra(CONNECT_PORT_NAME, -1);
 
-
-            client.connect(this, hostname, port, new WifiP2PMessageClient.ConnectionListener() {
+            WifiP2PConnection connection = new WifiP2PConnection(this, manager, hostname, port, executorService);
+            connection.setListener(new WifiP2PConnection.ConnectedListener() {
                 @Override
-                public void onConnected(MessageConnection connection) {
+                public void OnConnected(MessageConnection connection) {
                     connection.addHandler(Welcome.class, new MessageConnection.MessageListener<Welcome, Welcome.Builder>() {
                         @Override
                         public void packetReceived(Welcome message) {
@@ -139,6 +145,8 @@ public class ClientMusicService extends Service {
                     });
                 }
             });
+
+            connection.start();
         }
         return START_REDELIVER_INTENT;
     }

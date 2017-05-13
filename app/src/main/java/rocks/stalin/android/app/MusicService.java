@@ -38,17 +38,21 @@ import com.google.android.gms.cast.framework.CastSession;
 import com.google.android.gms.cast.framework.SessionManager;
 import com.google.android.gms.cast.framework.SessionManagerListener;
 
-import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
+import rocks.stalin.android.app.concurrent.CachedTaskExecutor;
+import rocks.stalin.android.app.concurrent.SimpleTaskScheduler;
+import rocks.stalin.android.app.concurrent.TimeAwareTaskExecutor;
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
 import rocks.stalin.android.app.network.MessageConnection;
 import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
 import rocks.stalin.android.app.network.SntpOffsetSource;
-import rocks.stalin.android.app.network.WifiP2PMessageServer;
+import rocks.stalin.android.app.network.TCPServerConnectionFactory;
+import rocks.stalin.android.app.network.WifiP2PManagerFacade;
+import rocks.stalin.android.app.network.WifiP2pServiceAnnouncer;
 import rocks.stalin.android.app.playback.CastPlayback;
 import rocks.stalin.android.app.playback.RemotePlayback;
 import rocks.stalin.android.app.playback.Playback;
@@ -100,9 +104,11 @@ import static rocks.stalin.android.app.utils.MediaIDHelper.MEDIA_ID_ROOT;
  *
  */
 public class MusicService extends MediaBrowserServiceCompat implements
-        PlaybackManager.PlaybackServiceCallback, WifiP2PMessageServer.ClientListener {
+        PlaybackManager.PlaybackServiceCallback, TCPServerConnectionFactory.NewConnectionListener {
 
     private static final String TAG = LogHelper.makeLogTag(MusicService.class);
+
+    private final TimeAwareTaskExecutor executorService = new TimeAwareTaskExecutor(new SimpleTaskScheduler(10, "POOL-%d"), new CachedTaskExecutor());
 
     // Extra on MediaSession that contains the Cast device name currently connected to
     public static final String EXTRA_CONNECTED_CAST = "rocks.stalin.android.app.CAST_NAME";
@@ -136,7 +142,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
     private RemotePlayback remotePlayback;
 
-    private WifiP2PMessageServer server;
+    private WifiP2pServiceAnnouncer server;
     private PeriodicPollOffsetProvider timeProvider;
 
     /*
@@ -188,14 +194,16 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
         LogHelper.i(TAG, "Starting manager");
 
-        WifiP2pManager manager = getSystemService(WifiP2pManager.class);
-        server = new WifiP2PMessageServer(manager);
-        server.initialize(this, new WifiP2PMessageServer.InitializedListener() {
-            @Override
-            public void onInitialized() {
-                server.start(MusicService.this);
-            }
-        });
+        //TODO: extract port number somewhere else, possible even not set it
+        TCPServerConnectionFactory connectionFactory = new TCPServerConnectionFactory(8009, executorService);
+        connectionFactory.setListener(this);
+        executorService.submit(connectionFactory);
+
+        WifiP2pManager rawManager = getSystemService(WifiP2pManager.class);
+        WifiP2pManager.Channel channel = rawManager.initialize(this, getMainLooper(), null);
+        WifiP2PManagerFacade manager = new WifiP2PManagerFacade(rawManager, channel);
+        server = new WifiP2pServiceAnnouncer(manager, 8009, executorService);
+        server.start();
 
         remotePlayback = new RemotePlayback(this, mMusicProvider, timeProvider);
         mPlaybackManager = new PlaybackManager(this, getResources(), mMusicProvider, queueManager,
@@ -281,12 +289,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
         mSession.release();
 
         timeProvider.release();
-
-        try {
-            server.stop();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed destroying WifiP2pServer");
-        }
+        server.stop();
     }
 
     @Override
@@ -373,7 +376,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
     }
 
     @Override
-    public void onNewClient(MessageConnection connection) {
+    public void onNewConnection(MessageConnection connection) {
         remotePlayback.addClient(connection);
     }
 

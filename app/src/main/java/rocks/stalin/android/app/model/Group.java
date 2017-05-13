@@ -2,6 +2,8 @@ package rocks.stalin.android.app.model;
 
 import android.net.wifi.p2p.WifiP2pConfig;
 
+import rocks.stalin.android.app.network.WifiP2PManagerFacade;
+
 /**
  * Created by delusional on 4/4/17.
  */
