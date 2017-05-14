@@ -10,6 +10,7 @@ import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 
+import rocks.stalin.android.app.framework.functional.Consumer;
 import rocks.stalin.android.app.utils.LogHelper;
 
 public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
@@ -28,6 +29,10 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
 
         context.registerReceiver(this, intentFilter);
+    }
+
+    public void unregister(Context context) {
+        context.unregisterReceiver(this);
     }
 
     @Override
@@ -50,7 +55,7 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                 manager.requestConnectionInfo(new WifiP2pManager.ConnectionInfoListener() {
                     @Override
                     public void onConnectionInfoAvailable(WifiP2pInfo info) {
-                        context.unregisterReceiver(WifiDirectBroadcastReceiver.this);
+                        unregister(context);
                         listener.onConnectionInfoAvailable(info);
                     }
                 });

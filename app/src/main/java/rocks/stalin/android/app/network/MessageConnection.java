@@ -11,7 +11,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
-import rocks.stalin.android.app.framework.concurrent.Lifecycle;
+import rocks.stalin.android.app.framework.Lifecycle;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.framework.concurrent.TimeAwareRunnable;
 import rocks.stalin.android.app.proto.Music;

@@ -11,17 +11,17 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
 
-import rocks.stalin.android.app.framework.concurrent.Lifecycle;
+import rocks.stalin.android.app.framework.Lifecycle;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.utils.LogHelper;
-
-import static android.content.ContentValues.TAG;
 
 /**
  * Created by delusional on 4/13/17.
  */
 
 public class WifiP2pServiceAnnouncer implements Runnable, Lifecycle {
+    private static final String TAG = LogHelper.makeLogTag(WifiP2pServiceAnnouncer.class);
+
     private final WifiP2pDnsSdServiceInfo serviceInfo;
     private WifiP2PManagerFacade manager;
 

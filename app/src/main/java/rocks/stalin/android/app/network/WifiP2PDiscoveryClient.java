@@ -7,7 +7,7 @@ import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import java.util.HashMap;
 import java.util.Map;
 
-import rocks.stalin.android.app.framework.concurrent.Lifecycle;
+import rocks.stalin.android.app.framework.Lifecycle;
 import rocks.stalin.android.app.model.Group;
 import rocks.stalin.android.app.utils.LogHelper;
 

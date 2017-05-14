@@ -76,6 +76,6 @@ public class WifiP2PManagerFacade {
     }
 
     public void discoverPeers(WifiP2pManager.ActionListener listener) {
-        manager.discoverServices(channel, listener);
+        manager.discoverPeers(channel, listener);
     }
 }

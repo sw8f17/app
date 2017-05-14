@@ -9,16 +9,15 @@ import android.os.PowerManager;
 import android.support.annotation.Nullable;
 
 import rocks.stalin.android.app.framework.ServiceLocator;
-import rocks.stalin.android.app.framework.concurrent.CachedTaskExecutor;
-import rocks.stalin.android.app.framework.concurrent.SimpleTaskScheduler;
+import rocks.stalin.android.app.framework.concurrent.ObservableFuture;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
-import rocks.stalin.android.app.framework.concurrent.TimeAwareTaskExecutor;
 import rocks.stalin.android.app.decoding.MP3Encoding;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
+import rocks.stalin.android.app.framework.functional.Consumer;
 import rocks.stalin.android.app.network.MessageConnection;
 import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
 import rocks.stalin.android.app.network.SntpOffsetSource;
-import rocks.stalin.android.app.network.WifiP2PConnection;
+import rocks.stalin.android.app.network.WifiP2PConnectionFactory;
 import rocks.stalin.android.app.network.WifiP2PManagerFacade;
 import rocks.stalin.android.app.playback.LocalAudioMixer;
 import rocks.stalin.android.app.playback.LocalSoundSink;
@@ -95,10 +94,11 @@ public class ClientMusicService extends Service {
             String hostname = intent.getStringExtra(CONNECT_HOST_NAME);
             int port = intent.getIntExtra(CONNECT_PORT_NAME, -1);
 
-            WifiP2PConnection connection = new WifiP2PConnection(this, manager, hostname, port, executorService);
-            connection.setListener(new WifiP2PConnection.ConnectedListener() {
+            WifiP2PConnectionFactory connectionFactory = new WifiP2PConnectionFactory(this, manager, executorService);
+            ObservableFuture<MessageConnection> connectionFuture = connectionFactory.connect(hostname, port);
+            connectionFuture.setListener(new Consumer<MessageConnection>(){
                 @Override
-                public void OnConnected(MessageConnection connection) {
+                public void call(MessageConnection connection) {
                     connection.addHandler(Welcome.class, new MessageConnection.MessageListener<Welcome, Welcome.Builder>() {
                         @Override
                         public void packetReceived(Welcome message) {
@@ -150,8 +150,6 @@ public class ClientMusicService extends Service {
                     });
                 }
             });
-
-            connection.start();
         }
         return START_REDELIVER_INTENT;
     }
