@@ -72,6 +72,11 @@ class RemoteMixer implements AudioMixer {
         throw new NoSuchMethodError("You can't call this on a fucking remote mixer you retard");
     }
 
+    @Override
+    public void change(MP3MediaInfo mediaInfo) {
+        throw new NoSuchMethodError("You can't call this on a fucking remote mixer you retard");
+    }
+
     private static class MixerHandler<M extends com.squareup.wire.Message<M, B>, B extends com.squareup.wire.Message.Builder<M, B>> extends HandlerThread {
         public static int WHAT_PUSH_ACTION = 1;
 

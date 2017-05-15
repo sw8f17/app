@@ -84,6 +84,8 @@ public class ClientMusicService extends Service {
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SMUS-Client");
     }
 
+    MP3MediaInfo mediaInfo;
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent.getAction();
@@ -133,7 +135,7 @@ public class ClientMusicService extends Service {
                             MediaInfo newInfo = message.songmetadata.mediainfo;
 
                             MP3Encoding encoding = MP3Encoding.UNSIGNED16;
-                            MP3MediaInfo mediaInfo = new MP3MediaInfo(newInfo.samplerate, newInfo.channels, newInfo.framesize, encoding);
+                            mediaInfo = new MP3MediaInfo(newInfo.samplerate, newInfo.channels, newInfo.framesize, encoding);
 
                             MediaChangeAction action = new MediaChangeAction(correctedTime, mediaInfo);
                             localAudioMixer.pushAction(action);
@@ -145,7 +147,7 @@ public class ClientMusicService extends Service {
                             Clock.Instant playTime = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
                             Clock.Instant correctedPlayTime = playTime.sub(timeService.getOffset());
                             LogHelper.i(TAG, "Corrected time ", playTime, " by ", timeService.getOffset(), " to ", correctedPlayTime);
-                            localAudioMixer.pushFrame(new MP3MediaInfo(44100, 1, 0, MP3Encoding.UNSIGNED16), correctedPlayTime, message.data.asByteBuffer());
+                            localAudioMixer.pushFrame(mediaInfo, correctedPlayTime, message.data.asByteBuffer());
                         }
                     });
                 }

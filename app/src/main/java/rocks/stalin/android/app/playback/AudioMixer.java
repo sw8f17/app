@@ -18,4 +18,5 @@ public interface AudioMixer {
     TimedAction readAction();
 
     void flush();
+    void change(MP3MediaInfo mediaInfo);
 }

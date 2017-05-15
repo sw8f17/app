@@ -28,6 +28,7 @@ public class MediaChangeAction extends TimedAction implements Messageable<SongCh
     public void execute(LocalSoundSink at, AudioMixer mixer) {
         at.reset();
         at.change(mediaInfo);
+        mixer.change(mediaInfo);
     }
 
     @Override
