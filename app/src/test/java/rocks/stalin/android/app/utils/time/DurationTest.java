@@ -1,5 +1,6 @@
 package rocks.stalin.android.app.utils.time;
 
+import org.hamcrest.core.IsEqual;
 import org.junit.Test;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -13,21 +14,21 @@ public class DurationTest {
     public void fromNanos_11() throws Exception {
         Clock.Duration d = Clock.Duration.FromNanos(1000001);
         assertThat(d.getMillis(), equalTo(1L));
-        assertThat(d.getNanos(), equalTo(1L));
+        assertThat(d.getNanos(), equalTo(1));
     }
 
     @Test
     public void fromNanos_22() throws Exception {
         Clock.Duration d = Clock.Duration.FromNanos(2000002);
         assertThat(d.getMillis(), equalTo(2L));
-        assertThat(d.getNanos(), equalTo(2L));
+        assertThat(d.getNanos(), equalTo(2));
     }
 
     @Test
     public void fromNanos_noMillis() throws Exception {
         Clock.Duration d = Clock.Duration.FromNanos(2);
         assertThat(d.getMillis(), equalTo(0L));
-        assertThat(d.getNanos(), equalTo(2L));
+        assertThat(d.getNanos(), equalTo(2));
     }
 
     @Test
@@ -95,5 +96,44 @@ public class DurationTest {
         Clock.Duration d = new Clock.Duration(1, 0);
         assertThat(d.multiply(5).inNanos(), equalTo(5000000L));
     }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void nanosTooBig() throws Exception {
+        new Clock.Duration(0L, 1000001);
+
+    }
+
+    @Test
+    public void divide_sanityCheck() throws Exception {
+        Clock.Duration d = new Clock.Duration(2, 0);
+        Clock.Duration half = d.divide(2);
+        assertThat(half.getMillis(), equalTo(1L));
+        assertThat(half.getNanos(), equalTo(0));
+    }
+
+    @Test
+    public void divide_overflow() throws Exception {
+        Clock.Duration d = new Clock.Duration(3, 0);
+        Clock.Duration half = d.divide(2);
+        assertThat(half.getMillis(), equalTo(1L));
+        assertThat(half.getNanos(), equalTo(500000));
+    }
+
+    @Test
+    public void divide_overflow_and_nanos() throws Exception {
+        Clock.Duration d = new Clock.Duration(3, 500000);
+        Clock.Duration half = d.divide(2);
+        assertThat(half.getMillis(), equalTo(1L));
+        assertThat(half.getNanos(), equalTo(750000));
+    }
+
+    @Test
+    public void divide_by_three() throws Exception {
+        Clock.Duration d = new Clock.Duration(3, 900000);
+        Clock.Duration half = d.divide(3);
+        assertThat(half.getMillis(), equalTo(1L));
+        assertThat(half.getNanos(), equalTo(300000));
+    }
+
 
 }

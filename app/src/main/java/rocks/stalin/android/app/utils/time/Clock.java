@@ -39,20 +39,27 @@ public class Clock {
         timeLock.readLock().lock();
         long nanosSinceLast = nanos - lastNanos;
         long milli = (nanosSinceLast / NANO_TO_MILLIS) + lastMillis;
-        long remainNano = (nanosSinceLast % NANO_TO_MILLIS);
+        int remainNano = (int) (nanosSinceLast % NANO_TO_MILLIS);
         timeLock.readLock().unlock();
         return new Instant(milli, remainNano);
     }
 
     public static class Instant implements Comparable<Instant> {
         private long millis;
-        private long nanos;
+        private int nanos;
 
-        public Instant(long millis, long nanos) {
+        public Instant(long millis, int nanos) {
             this.millis = millis;
+            if(nanos >= NANO_TO_MILLIS)
+                throw new IllegalArgumentException("The nanos given was greater than one millisecond: " +  nanos);
+
             this.nanos = nanos;
         }
 
+        /**
+         * Rounds the instant to the nearest millis, 500.000 rounds up.
+         * @return the instant as millis rounded.
+         */
         public long inMillis() {
             long roundedMillis = millis;
             if(nanos >= NANO_TO_MILLIS/2)
@@ -64,13 +71,13 @@ public class Clock {
             return millis;
         }
 
-        public long getNanos() {
+        public int getNanos() {
             return nanos;
         }
 
         public Duration timeBetween(Instant o) {
             long newMillis = Math.abs(millis - o.getMillis());
-            long newNanos = Math.abs(nanos - o.getNanos());
+            int newNanos = Math.abs(nanos - o.getNanos());
             return new Duration(newMillis, newNanos);
         }
 
@@ -78,7 +85,14 @@ public class Clock {
             long newNanos = nanos + expectedEnd.getNanos();
             long newMillis = millis + expectedEnd.getMillis() + (newNanos / NANO_TO_MILLIS);
             newNanos %= NANO_TO_MILLIS;
-            return new Instant(newMillis, newNanos);
+            return new Instant(newMillis, (int) newNanos);
+        }
+
+        public Instant sub(Duration expectedEnd) {
+            long newNanos = nanos - expectedEnd.getNanos();
+            long newMillis = (millis - expectedEnd.getMillis()) - (newNanos < 0 ? 1 : 0);
+            newNanos = newNanos < 0 ? NANO_TO_MILLIS + newNanos : newNanos;
+            return new Instant(newMillis, (int) newNanos);
         }
 
         public boolean before(Instant o) {
@@ -94,31 +108,35 @@ public class Clock {
 
         @Override
         public String toString() {
-            return "Instant{" +
-                    "millis=" + millis +
-                    ", nanos=" + nanos +
-                    '}';
+            return millis + ":" + nanos;
         }
     }
 
     public static class Duration {
         private long millis;
-        private long nanos;
+        private int nanos;
 
-        public Duration(long seconds, long nanos) {
-            this.millis = seconds;
+        public Duration(long millis, int nanos) {
+            this.millis = millis;
+            if(nanos / NANO_TO_MILLIS > 0)
+                throw new IllegalArgumentException("The nanos given was greater than one millisecond");
+
             this.nanos = nanos;
-        }
-
-        public static Duration FromNanos(long nanos) {
-            long millis = (nanos / NANO_TO_MILLIS);
-            long remainNanos = (nanos % NANO_TO_MILLIS);
-            return new Duration(millis, remainNanos);
         }
 
         public static Duration fromSeconds(long seconds) {
             long millis = seconds * MILLIS_TO_SEC;
+            return fromMillis(millis);
+        }
+
+        public static Duration fromMillis(long millis) {
             return new Duration(millis, 0);
+        }
+
+        public static Duration FromNanos(long nanos) {
+            long millis = (nanos / NANO_TO_MILLIS);
+            int remainNanos = (int) (nanos % NANO_TO_MILLIS);
+            return new Duration(millis, remainNanos);
         }
 
         public long inSeconds() {
@@ -135,6 +153,15 @@ public class Clock {
             return roundedMillis;
         }
 
+        public Duration add(Duration operand) {
+            int newNanos = this.nanos + operand.nanos;
+            long newMillis = this.millis + operand.millis;
+            newMillis += newNanos / NANO_TO_MILLIS;
+            newNanos %= NANO_TO_MILLIS;
+
+            return new Duration(newMillis, newNanos);
+        }
+
         public long inNanos() {
             return millis * NANO_TO_MILLIS + nanos;
         }
@@ -143,7 +170,7 @@ public class Clock {
             return millis;
         }
 
-        public long getNanos() {
+        public int getNanos() {
             return nanos;
         }
 
@@ -151,15 +178,24 @@ public class Clock {
             long newNanos = nanos * times;
             long newMillis = millis * times + (newNanos / NANO_TO_MILLIS);
             newNanos %= NANO_TO_MILLIS;
-            return new Duration(newMillis, newNanos);
+            return new Duration(newMillis, (int) newNanos);
+        }
+
+        public Duration divide(int denominator) {
+            long newMillis = this.millis / denominator;
+
+            // There might be a remainder from the millis division, convert to nanos and try again.
+            long remainderMillis = this.millis % denominator;
+            long newNanos = (this.nanos + remainderMillis * NANO_TO_MILLIS) / denominator;
+            newMillis += newNanos / NANO_TO_MILLIS;
+            newNanos %= NANO_TO_MILLIS;
+
+            return new Duration(newMillis, (int) newNanos);
         }
 
         @Override
         public String toString() {
-            return "Duration{" +
-                    "millis=" + millis +
-                    ", nanos=" + nanos +
-                    '}';
+            return millis + ":" + nanos + "D";
         }
     }
 }

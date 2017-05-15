@@ -5,6 +5,6 @@ package rocks.stalin.scotty;
 option java_package = "rocks.stalin.android.app.proto";
 
 message Timestamp {
-    int64 seconds = 1;
+    int64 millis = 1;
     int32 nanos = 2;
 }
