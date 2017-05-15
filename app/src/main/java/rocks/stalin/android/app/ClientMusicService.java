@@ -108,6 +108,8 @@ public class ClientMusicService extends Service {
                         LogHelper.e(TAG, "OffsetSource Factory failed to create" + e);
                     }
 
+                    timeService.start();
+
                     connection.addHandler(Welcome.class, new MessageConnection.MessageListener<Welcome, Welcome.Builder>() {
                         @Override
                         public void packetReceived(Welcome message) {

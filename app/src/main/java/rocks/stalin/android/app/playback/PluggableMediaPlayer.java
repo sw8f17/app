@@ -134,7 +134,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
         LogHelper.e(TAG, "Starting playback");
 
-        Clock.Instant startTime = Clock.getTime().add(Clock.Duration.fromMillis(100));
+        Clock.Instant startTime = Clock.getTime().add(Clock.Duration.fromMillis(250));
 
         currentFile.seek((int) pauseSample);
 

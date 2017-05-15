@@ -3,6 +3,7 @@ package rocks.stalin.android.app.network;
 import com.google.android.gms.tasks.Task;
 
 import java.io.IOException;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import rocks.stalin.android.app.framework.Lifecycle;
@@ -14,11 +15,12 @@ import rocks.stalin.android.app.proto.Timestamp;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.time.Clock;
 
-public class LocalNetworkSntpOffsetSource implements OffsetSource, Lifecycle, Runnable {
+public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
     private static final String TAG = LogHelper.makeLogTag(LocalNetworkSntpOffsetSource.class);
 
     private MessageConnection connection;
     private TaskScheduler scheduler;
+    private ScheduledFuture<?> future;
 
     private Clock.Duration latestOffset = new Clock.Duration(0L, 0);
 
@@ -78,13 +80,15 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Lifecycle, Ru
             }
         });
 
-        scheduler.submitWithFixedRate(this, 5, TimeUnit.SECONDS);
+        future = scheduler.submitWithFixedRate(this, 5, TimeUnit.SECONDS);
+        LogHelper.i(TAG, "started.");
 
         running = true;
     }
 
     @Override
     public void stop() {
+        future.cancel(false);
         connection.removeHandler(SntpResponse.class);
         running = false;
     }

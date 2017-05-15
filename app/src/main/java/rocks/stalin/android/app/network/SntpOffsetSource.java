@@ -137,4 +137,19 @@ public class SntpOffsetSource implements OffsetSource {
         // low order bits should be random data
         buffer[offset++] = (byte)(Math.random() * 255.0);
     }
+
+    @Override
+    public void start() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void stop() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isRunning() {
+        throw new UnsupportedOperationException();
+    }
 }

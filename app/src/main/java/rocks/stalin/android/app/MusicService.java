@@ -49,6 +49,7 @@ import rocks.stalin.android.app.model.MusicProvider;
 import rocks.stalin.android.app.network.LocalOffsetService;
 import rocks.stalin.android.app.network.MessageConnection;
 import rocks.stalin.android.app.network.OffsetSource;
+import rocks.stalin.android.app.network.SntpServer;
 import rocks.stalin.android.app.network.TCPServerConnectionFactory;
 import rocks.stalin.android.app.network.WifiP2PManagerFacade;
 import rocks.stalin.android.app.network.WifiP2pServiceAnnouncer;
@@ -376,6 +377,8 @@ public class MusicService extends MediaBrowserServiceCompat implements
     @Override
     public void onNewConnection(MessageConnection connection) {
         remotePlayback.addClient(connection);
+        SntpServer sntpServer = new SntpServer();
+        sntpServer.register(connection);
     }
 
     /**
