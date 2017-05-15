@@ -15,7 +15,8 @@ import java.util.List;
 import rocks.stalin.android.app.ClientMusicService;
 import rocks.stalin.android.app.R;
 import rocks.stalin.android.app.model.Group;
-import rocks.stalin.android.app.network.WifiP2PMessageClient;
+import rocks.stalin.android.app.network.WifiP2PManagerFacade;
+import rocks.stalin.android.app.network.WifiP2PDiscoveryClient;
 import rocks.stalin.android.app.utils.LogHelper;
 
 /**
@@ -30,7 +31,7 @@ public class SelectGroupActivity extends AppCompatActivity {
     List<Group> groupList = new ArrayList<>();
     GroupItemAdapter adapter;
 
-    WifiP2PMessageClient client;
+    WifiP2PDiscoveryClient discoverer;
 
 
     @Override
@@ -38,9 +39,18 @@ public class SelectGroupActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_select_group);
 
-        WifiP2pManager manager = getSystemService(WifiP2pManager.class);
-        client = new WifiP2PMessageClient(manager);
-        client.initialize(this);
+        WifiP2pManager rawManager = getSystemService(WifiP2pManager.class);
+        WifiP2pManager.Channel channel = rawManager.initialize(this, getMainLooper(), null);
+        WifiP2PManagerFacade manager = new WifiP2PManagerFacade(rawManager, channel);
+
+        discoverer = new WifiP2PDiscoveryClient(manager);
+        discoverer.setListener(new WifiP2PDiscoveryClient.DiscoverListener() {
+            @Override
+            public void onServerDiscovered(Group group) {
+                groupList.add(group);
+                adapter.notifyItemInserted(groupList.size()-1);
+            }
+        });
 
         rv = (RecyclerView) findViewById(R.id.rv);
         LinearLayoutManager layoutManager = new LinearLayoutManager(getApplicationContext());
@@ -57,6 +67,7 @@ public class SelectGroupActivity extends AppCompatActivity {
                 i.putExtra(ClientMusicService.CONNECT_HOST_NAME, group.address);
                 i.putExtra(ClientMusicService.CONNECT_PORT_NAME, 8009);
                 startService(i);
+                discoverer.stop();
             }
         });
         rv.setAdapter(adapter);
@@ -65,25 +76,19 @@ public class SelectGroupActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        client.discoverServers(new WifiP2PMessageClient.DiscoverListener() {
-            @Override
-            public void onServerDiscovered(Group group) {
-                groupList.add(group);
-                adapter.notifyItemInserted(groupList.size()-1);
-            }
-        });
+        discoverer.start();
     }
 
     @Override
     protected void onPause() {
-        client.stopDiscovery();
+        discoverer.stop();
         super.onPause();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        client.stopDiscovery();
+        discoverer.stop();
         Intent i = new Intent(this, ClientMusicService.class);
         stopService(i);
     }

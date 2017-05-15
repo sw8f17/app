@@ -8,12 +8,17 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
 
+import rocks.stalin.android.app.framework.ServiceLocator;
+import rocks.stalin.android.app.framework.concurrent.ObservableFuture;
+import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.decoding.MP3Encoding;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
+import rocks.stalin.android.app.framework.functional.Consumer;
 import rocks.stalin.android.app.network.MessageConnection;
 import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
 import rocks.stalin.android.app.network.SntpOffsetSource;
-import rocks.stalin.android.app.network.WifiP2PMessageClient;
+import rocks.stalin.android.app.network.WifiP2PConnectionFactory;
+import rocks.stalin.android.app.network.WifiP2PManagerFacade;
 import rocks.stalin.android.app.playback.LocalAudioMixer;
 import rocks.stalin.android.app.playback.LocalSoundSink;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
@@ -41,13 +46,15 @@ public class ClientMusicService extends Service {
     public static final String CONNECT_HOST_NAME = "CONNECT_HOST_NAME";
     public static final String CONNECT_PORT_NAME = "CONNECT_PORT_NAME";
 
-    private WifiP2PMessageClient client;
-    private MessageConnection connection = null;
+    private TaskExecutor executorService;
+
     private LocalAudioMixer localAudioMixer;
     private LocalSoundSink sink;
     private PeriodicPollOffsetProvider timeService;
 
     private PowerManager.WakeLock wakeLock;
+
+    private WifiP2PManagerFacade manager;
 
 
     @Nullable
@@ -59,9 +66,12 @@ public class ClientMusicService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        WifiP2pManager manager = getSystemService(WifiP2pManager.class);
-        client = new WifiP2PMessageClient(manager);
-        client.initialize(this);
+
+        executorService = ServiceLocator.getInstance().getService(TaskExecutor.class);
+
+        WifiP2pManager rawManager = getSystemService(WifiP2pManager.class);
+        WifiP2pManager.Channel channel = rawManager.initialize(this, getMainLooper(), null);
+        manager = new WifiP2PManagerFacade(rawManager, channel);
 
         localAudioMixer = new LocalAudioMixer();
         sink = new LocalSoundSink(localAudioMixer);
@@ -84,10 +94,11 @@ public class ClientMusicService extends Service {
             String hostname = intent.getStringExtra(CONNECT_HOST_NAME);
             int port = intent.getIntExtra(CONNECT_PORT_NAME, -1);
 
-
-            client.connect(this, hostname, port, new WifiP2PMessageClient.ConnectionListener() {
+            WifiP2PConnectionFactory connectionFactory = new WifiP2PConnectionFactory(this, manager, executorService);
+            ObservableFuture<MessageConnection> connectionFuture = connectionFactory.connect(hostname, port);
+            connectionFuture.setListener(new Consumer<MessageConnection>(){
                 @Override
-                public void onConnected(MessageConnection connection) {
+                public void call(MessageConnection connection) {
                     connection.addHandler(Welcome.class, new MessageConnection.MessageListener<Welcome, Welcome.Builder>() {
                         @Override
                         public void packetReceived(Welcome message) {
