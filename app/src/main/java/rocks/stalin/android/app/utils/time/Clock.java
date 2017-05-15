@@ -153,6 +153,15 @@ public class Clock {
             return roundedMillis;
         }
 
+        public Duration add(Duration operand) {
+            int newNanos = this.nanos + operand.nanos;
+            long newMillis = this.millis + operand.millis;
+            newMillis += newNanos / NANO_TO_MILLIS;
+            newNanos %= NANO_TO_MILLIS;
+
+            return new Duration(newMillis, newNanos);
+        }
+
         public long inNanos() {
             return millis * NANO_TO_MILLIS + nanos;
         }
@@ -169,6 +178,18 @@ public class Clock {
             long newNanos = nanos * times;
             long newMillis = millis * times + (newNanos / NANO_TO_MILLIS);
             newNanos %= NANO_TO_MILLIS;
+            return new Duration(newMillis, (int) newNanos);
+        }
+
+        public Duration divide(int denominator) {
+            long newMillis = this.millis / denominator;
+
+            // There might be a remainder from the millis division, convert to nanos and try again.
+            long remainderMillis = this.millis % denominator;
+            long newNanos = (this.nanos + remainderMillis * NANO_TO_MILLIS) / denominator;
+            newMillis += newNanos / NANO_TO_MILLIS;
+            newNanos %= NANO_TO_MILLIS;
+
             return new Duration(newMillis, (int) newNanos);
         }
 

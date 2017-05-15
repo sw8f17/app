@@ -11,7 +11,7 @@ import okio.ByteString;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.network.MessageConnection;
 import rocks.stalin.android.app.network.Messageable;
-import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
+import rocks.stalin.android.app.network.OffsetSource;
 import rocks.stalin.android.app.playback.actions.TimedAction;
 import rocks.stalin.android.app.proto.Music;
 import rocks.stalin.android.app.proto.Timestamp;
@@ -27,9 +27,9 @@ class RemoteMixer implements AudioMixer {
     private MessageConnection connection;
 
     MixerHandler thread;
-    private PeriodicPollOffsetProvider timeService;
+    private OffsetSource timeService;
 
-    public RemoteMixer(MessageConnection connection, PeriodicPollOffsetProvider timeService) {
+    public RemoteMixer(MessageConnection connection, OffsetSource timeService) {
         this.connection = connection;
         thread = new MixerHandler(connection);
         this.timeService = timeService;

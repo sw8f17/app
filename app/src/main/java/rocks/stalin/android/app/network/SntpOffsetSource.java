@@ -1,6 +1,5 @@
 package rocks.stalin.android.app.network;
 
-import android.os.AsyncTask;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -12,8 +11,9 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 
 import rocks.stalin.android.app.utils.LogHelper;
+import rocks.stalin.android.app.utils.time.Clock;
 
-public class SntpOffsetSource {
+public class SntpOffsetSource implements OffsetSource {
     private static final String TAG = LogHelper.makeLogTag(SntpOffsetSource.class);
 
     private static final int ORIGINATE_TIME_OFFSET = 24;
@@ -31,7 +31,8 @@ public class SntpOffsetSource {
     // 70 years plus 17 leap days
     private static final long OFFSET_1900_TO_1970 = ((365L * 70L) + 17L) * 24L * 60L * 60L;
 
-    public long getOffset() {
+    @Override
+    public Clock.Duration getOffset() {
         DatagramSocket socket = null;
         long clockOffset;
         try {
@@ -82,7 +83,7 @@ public class SntpOffsetSource {
             }
         }
 
-        return clockOffset;
+        return new Clock.Duration(clockOffset, 0);
     }
 
     /**
@@ -135,5 +136,20 @@ public class SntpOffsetSource {
         buffer[offset++] = (byte)(fraction >> 8);
         // low order bits should be random data
         buffer[offset++] = (byte)(Math.random() * 255.0);
+    }
+
+    @Override
+    public void start() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void stop() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isRunning() {
+        throw new UnsupportedOperationException();
     }
 }

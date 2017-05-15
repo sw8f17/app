@@ -19,12 +19,6 @@ package rocks.stalin.android.app.utils;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.support.annotation.Nullable;
-
-import java.util.concurrent.ExecutionException;
-
-import rocks.stalin.android.app.network.SntpOffsetSource;
-import rocks.stalin.android.app.utils.time.Clock;
 
 /**
  * Generic reusable network methods.

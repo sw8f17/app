@@ -43,23 +43,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 import rocks.stalin.android.app.framework.ServiceLocator;
-import rocks.stalin.android.app.framework.concurrent.CachedTaskExecutor;
-import rocks.stalin.android.app.framework.concurrent.SimpleTaskScheduler;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
-import rocks.stalin.android.app.framework.concurrent.TimeAwareTaskExecutor;
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
+import rocks.stalin.android.app.network.LocalOffsetService;
 import rocks.stalin.android.app.network.MessageConnection;
-import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
-import rocks.stalin.android.app.network.SntpOffsetSource;
+import rocks.stalin.android.app.network.OffsetSource;
+import rocks.stalin.android.app.network.SntpServer;
 import rocks.stalin.android.app.network.TCPServerConnectionFactory;
 import rocks.stalin.android.app.network.WifiP2PManagerFacade;
 import rocks.stalin.android.app.network.WifiP2pServiceAnnouncer;
 import rocks.stalin.android.app.playback.CastPlayback;
-import rocks.stalin.android.app.playback.RemotePlayback;
 import rocks.stalin.android.app.playback.Playback;
 import rocks.stalin.android.app.playback.PlaybackManager;
 import rocks.stalin.android.app.playback.QueueManager;
+import rocks.stalin.android.app.playback.RemotePlayback;
 import rocks.stalin.android.app.ui.NowPlayingActivity;
 import rocks.stalin.android.app.utils.LogHelper;
 
@@ -144,8 +142,8 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
     private RemotePlayback remotePlayback;
 
+    private OffsetSource timeProvider;
     private WifiP2pServiceAnnouncer server;
-    private PeriodicPollOffsetProvider timeProvider;
 
     /*
      * (non-Javadoc)
@@ -156,10 +154,8 @@ public class MusicService extends MediaBrowserServiceCompat implements
         super.onCreate();
         LogHelper.d(TAG, "onCreate");
 
+        timeProvider = new LocalOffsetService();
         executorService = ServiceLocator.getInstance().getService(TaskExecutor.class);
-
-        timeProvider = new PeriodicPollOffsetProvider(new SntpOffsetSource());
-        timeProvider.start();
 
         mMusicProvider = new MusicProvider(new ExternalStorageSource(getApplicationContext()));
         //mMusicProvider = new MusicProvider();
@@ -292,7 +288,6 @@ public class MusicService extends MediaBrowserServiceCompat implements
         mDelayedStopHandler.removeCallbacksAndMessages(null);
         mSession.release();
 
-        timeProvider.release();
         server.stop();
     }
 
@@ -382,6 +377,8 @@ public class MusicService extends MediaBrowserServiceCompat implements
     @Override
     public void onNewConnection(MessageConnection connection) {
         remotePlayback.addClient(connection);
+        SntpServer sntpServer = new SntpServer();
+        sntpServer.register(connection);
     }
 
     /**

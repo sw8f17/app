@@ -10,6 +10,8 @@ import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.proto.SeekCommand;
 import rocks.stalin.android.app.proto.SessionInfo;
+import rocks.stalin.android.app.proto.SntpRequest;
+import rocks.stalin.android.app.proto.SntpResponse;
 import rocks.stalin.android.app.proto.SongChangeCommand;
 import rocks.stalin.android.app.proto.Welcome;
 
@@ -33,6 +35,8 @@ public class MessageRegistry {
         messages.put(SeekCommand.class, 5);
         messages.put(SongChangeCommand.class, 6);
         messages.put(SessionInfo.class, 7);
+        messages.put(SntpRequest.class, 8);
+        messages.put(SntpResponse.class, 9);
     }
 
     public int getID(Class<? extends Message> type) {

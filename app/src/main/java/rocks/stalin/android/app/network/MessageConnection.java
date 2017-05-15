@@ -19,6 +19,8 @@ import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.proto.SeekCommand;
 import rocks.stalin.android.app.proto.SessionInfo;
+import rocks.stalin.android.app.proto.SntpRequest;
+import rocks.stalin.android.app.proto.SntpResponse;
 import rocks.stalin.android.app.proto.SongChangeCommand;
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
@@ -97,44 +99,47 @@ public class MessageConnection implements Lifecycle, TimeAwareRunnable {
         handlers.put(MessageRegistry.getInstance().getID(messageType), listener);
     }
 
+    public <M extends Message<M, B>, B extends Message.Builder<M, B>> void removeHandler(Class<M> messageType) {
+        handlers.delete(MessageRegistry.getInstance().getID(messageType));
+    }
+
     private void processMessage(int type, byte[] data) throws IOException {
         Message<?, ?> message;
-        MessageListener handler;
         switch (type) {
             case 1:
                 message = Welcome.ADAPTER.decode(data);
-                handler = handlers.get(type);
                 break;
             case 2:
                 message = Music.ADAPTER.decode(data);
-                handler = handlers.get(type);
                 break;
             case 3:
                 message = PlayCommand.ADAPTER.decode(data);
-                handler = handlers.get(type);
                 break;
             case 4:
                 message = PauseCommand.ADAPTER.decode(data);
-                handler = handlers.get(type);
                 break;
             case 5:
                 message = SeekCommand.ADAPTER.decode(data);
-                handler = handlers.get(type);
                 break;
             case 6:
                 message = SongChangeCommand.ADAPTER.decode(data);
-                handler = handlers.get(type);
                 break;
             case 7:
                 message = SessionInfo.ADAPTER.decode(data);
-                handler = handlers.get(type);
+                break;
+            case 8:
+                message = SntpRequest.ADAPTER.decode(data);
+                break;
+            case 9:
+                message = SntpResponse.ADAPTER.decode(data);
                 break;
             default:
                 LogHelper.w(TAG, "Received unknown message of type ", type);
                 return;
         }
-        if(handler == null)
-            LogHelper.w(TAG, "There's no handler for message of type ", type);
+
+        MessageListener handler = handlers.get(type);
+
         if(handler != null && message != null) {
             /*
              * This is unsafe, since it's deserializing the network data.
