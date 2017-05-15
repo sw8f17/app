@@ -8,20 +8,19 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
 
+import java.util.concurrent.ExecutionException;
+
+import rocks.stalin.android.app.decoding.MP3Encoding;
+import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.framework.ServiceLocator;
 import rocks.stalin.android.app.framework.concurrent.ObservableFuture;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
-import rocks.stalin.android.app.decoding.MP3Encoding;
-import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.framework.functional.Consumer;
-import rocks.stalin.android.app.network.LocalNetworkSntpOffsetSource;
 import rocks.stalin.android.app.network.MessageConnection;
-import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
-import rocks.stalin.android.app.network.SntpOffsetSource;
+import rocks.stalin.android.app.network.OffsetSource;
+import rocks.stalin.android.app.network.OffsetSourceFactory;
 import rocks.stalin.android.app.network.WifiP2PConnectionFactory;
 import rocks.stalin.android.app.network.WifiP2PManagerFacade;
-import rocks.stalin.android.app.network.OffsetSource;
-import rocks.stalin.android.app.network.WifiP2PMessageClient;
 import rocks.stalin.android.app.playback.LocalAudioMixer;
 import rocks.stalin.android.app.playback.LocalSoundSink;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
@@ -101,7 +100,14 @@ public class ClientMusicService extends Service {
             connectionFuture.setListener(new Consumer<MessageConnection>(){
 
                 public void call(MessageConnection connection) {
-                    timeService = new LocalNetworkSntpOffsetSource(connection);
+                    OffsetSourceFactory offsetSourceFactory = ServiceLocator.getInstance().getService(OffsetSourceFactory.class);
+
+                    try {
+                        timeService = offsetSourceFactory.create(connection).get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        LogHelper.e(TAG, "OffsetSource Factory failed to create" + e);
+                    }
+
                     connection.addHandler(Welcome.class, new MessageConnection.MessageListener<Welcome, Welcome.Builder>() {
                         @Override
                         public void packetReceived(Welcome message) {
@@ -112,9 +118,12 @@ public class ClientMusicService extends Service {
                         @Override
                         public void packetReceived(PlayCommand message) {
                             Clock.Instant time = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
-                            Clock.Instant correctedTime = time.sub(timeService.getOffset());
-                            LogHelper.i(TAG, "Corrected time ", time, " by ", timeService.getOffset(), " to ", correctedTime);
-                            PlayAction action = new PlayAction(correctedTime);
+                            if(timeService != null) {
+                                Clock.Instant correctedTime = time.sub(timeService.getOffset());
+                                LogHelper.i(TAG, "Corrected time ", time, " by ", timeService.getOffset(), " to ", correctedTime);
+                                time = correctedTime;
+                            }
+                            PlayAction action = new PlayAction(time);
                             localAudioMixer.pushAction(action);
                         }
                     });
@@ -122,8 +131,10 @@ public class ClientMusicService extends Service {
                         @Override
                         public void packetReceived(PauseCommand message) {
                             Clock.Instant time = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
-                            Clock.Instant correctedTime = time.sub(timeService.getOffset());
-                            PauseAction action = new PauseAction(correctedTime);
+                            if(timeService != null) {
+                                time = time.sub(timeService.getOffset());
+                            }
+                            PauseAction action = new PauseAction(time);
                             localAudioMixer.pushAction(action);
                         }
                     });
@@ -131,14 +142,16 @@ public class ClientMusicService extends Service {
                         @Override
                         public void packetReceived(SongChangeCommand message) {
                             Clock.Instant time = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
-                            Clock.Instant correctedTime = time.sub(timeService.getOffset());
+                            if(timeService != null) {
+                                time = time.sub(timeService.getOffset());
+                            }
 
                             MediaInfo newInfo = message.songmetadata.mediainfo;
 
                             MP3Encoding encoding = MP3Encoding.UNSIGNED16;
                             mediaInfo = new MP3MediaInfo(newInfo.samplerate, newInfo.channels, newInfo.framesize, encoding);
 
-                            MediaChangeAction action = new MediaChangeAction(correctedTime, mediaInfo);
+                            MediaChangeAction action = new MediaChangeAction(time, mediaInfo);
                             localAudioMixer.pushAction(action);
                         }
                     });
@@ -146,9 +159,12 @@ public class ClientMusicService extends Service {
                         @Override
                         public void packetReceived(Music message) {
                             Clock.Instant playTime = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
-                            Clock.Instant correctedPlayTime = playTime.sub(timeService.getOffset());
-                            LogHelper.i(TAG, "Corrected time ", playTime, " by ", timeService.getOffset(), " to ", correctedPlayTime);
-                            localAudioMixer.pushFrame(mediaInfo, correctedPlayTime, message.data.asByteBuffer());
+                            if(timeService != null) {
+                                Clock.Instant correctedPlayTime = playTime.sub(timeService.getOffset());
+                                LogHelper.i(TAG, "Corrected time ", playTime, " by ", timeService.getOffset(), " to ", correctedPlayTime);
+                                playTime = correctedPlayTime;
+                            }
+                            localAudioMixer.pushFrame(mediaInfo, playTime, message.data.asByteBuffer());
                         }
                     });
                 }
@@ -162,8 +178,6 @@ public class ClientMusicService extends Service {
         sink.release();
         if(wakeLock.isHeld())
             wakeLock.release();
-        if(timeService != null)
-            timeService.tearDown();
         Debug.stopMethodTracing();
         super.onDestroy();
     }

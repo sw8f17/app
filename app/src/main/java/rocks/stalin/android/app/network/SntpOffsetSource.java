@@ -86,11 +86,6 @@ public class SntpOffsetSource implements OffsetSource {
         return new Clock.Duration(clockOffset, 0);
     }
 
-    @Override
-    public void tearDown() {
-
-    }
-
     /**
      * Reads an unsigned 32 bit big endian number from the given offset in the buffer.
      */

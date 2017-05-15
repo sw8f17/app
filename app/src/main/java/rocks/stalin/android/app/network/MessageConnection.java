@@ -99,6 +99,10 @@ public class MessageConnection implements Lifecycle, TimeAwareRunnable {
         handlers.put(MessageRegistry.getInstance().getID(messageType), listener);
     }
 
+    public <M extends Message<M, B>, B extends Message.Builder<M, B>> void removeHandler(Class<M> messageType) {
+        handlers.delete(MessageRegistry.getInstance().getID(messageType));
+    }
+
     private void processMessage(int type, byte[] data) throws IOException {
         Message<?, ?> message;
         switch (type) {

@@ -43,26 +43,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 import rocks.stalin.android.app.framework.ServiceLocator;
-import rocks.stalin.android.app.framework.concurrent.CachedTaskExecutor;
-import rocks.stalin.android.app.framework.concurrent.SimpleTaskScheduler;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
-import rocks.stalin.android.app.framework.concurrent.TimeAwareTaskExecutor;
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
 import rocks.stalin.android.app.network.LocalOffsetService;
 import rocks.stalin.android.app.network.MessageConnection;
 import rocks.stalin.android.app.network.OffsetSource;
-import rocks.stalin.android.app.network.WifiP2PMessageServer;
-import rocks.stalin.android.app.network.PeriodicPollOffsetProvider;
-import rocks.stalin.android.app.network.SntpOffsetSource;
 import rocks.stalin.android.app.network.TCPServerConnectionFactory;
 import rocks.stalin.android.app.network.WifiP2PManagerFacade;
 import rocks.stalin.android.app.network.WifiP2pServiceAnnouncer;
 import rocks.stalin.android.app.playback.CastPlayback;
-import rocks.stalin.android.app.playback.RemotePlayback;
 import rocks.stalin.android.app.playback.Playback;
 import rocks.stalin.android.app.playback.PlaybackManager;
 import rocks.stalin.android.app.playback.QueueManager;
+import rocks.stalin.android.app.playback.RemotePlayback;
 import rocks.stalin.android.app.ui.NowPlayingActivity;
 import rocks.stalin.android.app.utils.LogHelper;
 
@@ -147,7 +141,6 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
     private RemotePlayback remotePlayback;
 
-    private WifiP2PMessageServer server;
     private OffsetSource timeProvider;
     private WifiP2pServiceAnnouncer server;
 

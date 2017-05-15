@@ -4,5 +4,4 @@ import rocks.stalin.android.app.utils.time.Clock;
 
 public interface OffsetSource {
     Clock.Duration getOffset();
-    void tearDown();
 }
