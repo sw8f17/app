@@ -19,7 +19,6 @@ import rocks.stalin.android.app.playback.actions.MediaChangeAction;
 import rocks.stalin.android.app.playback.actions.PauseAction;
 import rocks.stalin.android.app.playback.actions.PlayAction;
 import rocks.stalin.android.app.playback.actions.TimedAction;
-import rocks.stalin.android.app.proto.MediaInfo;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.decoding.MP3File;
 import rocks.stalin.android.app.utils.time.Clock;
@@ -74,16 +73,17 @@ public class PluggableMediaPlayer implements MediaPlayer {
     @Override
     public void reset() {
         sink.reset();
-        state = PlaybackState.Stopped;
+        localMixer.flush();
         if(feederHandle != null) {
             feederHandle.cancel(true);
             feederHandle = null;
         }
+        feeder = null;
         if(currentFile != null) {
             currentFile.close();
             currentFile = null;
         }
-        localMixer.flush();
+        mediaInfo = null;
 
         state = PlaybackState.Idle;
     }
@@ -111,6 +111,8 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     @Override
     public void prepareAsync() {
+        Thread.dumpStack();
+        LogHelper.i(TAG, "Prepare");
         if(state != PlaybackState.Initialized) {
             throw new IllegalStateException("You can't prepareAsync from " + state);
         }
@@ -134,7 +136,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
         LogHelper.e(TAG, "Starting playback");
 
-        Clock.Instant startTime = Clock.getTime().add(Clock.Duration.fromMillis(250));
+        Clock.Instant startTime = Clock.getTime().add(Clock.Duration.fromMillis(1000));
 
         currentFile.seek((int) pauseSample);
 
@@ -181,6 +183,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     @Override
     public void seekTo(int msec) {
+        LogHelper.i(TAG, "Seeking to ", msec);
         int sample = (int) ((currentFile.getMediaInfo().sampleRate * msec) / 1000);
         currentFile.seek(sample);
         seekCompleteListener.onSeekComplete(this);
@@ -207,11 +210,14 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
     @Override
     public int getCurrentPosition() {
-        if(state == PlaybackState.Paused)
+        if(state == PlaybackState.Paused) {
             return (int) mediaInfo.timeToPlayBytes(pauseSample * mediaInfo.getSampleSize()).inMillis();
-        Clock.Instant now = Clock.getTime();
-        return (int) mediaInfo.timeToPlayBytes(feeder.tellAt(now) * mediaInfo.getSampleSize()).inMillis();
-        //return (int) (currentFile.tell() / currentFile.getMediaInfo().sampleRate) * 1000;
+        } else if(state == PlaybackState.Playing) {
+            Clock.Instant now = Clock.getTime();
+            return (int) mediaInfo.timeToPlayBytes(feeder.tellAt(now) * mediaInfo.getSampleSize()).inMillis();
+        } else {
+            return 0;
+        }
     }
 
     @Override
@@ -272,7 +278,7 @@ public class PluggableMediaPlayer implements MediaPlayer {
         public long tellAt(Clock.Instant time) {
             if(nextFrameStart == null)
                 return 0;
-            Clock.Duration diff = time.timeBetween(nextFrameStart);
+            Clock.Duration diff = time.sub(nextFrameStart);
             long expectedSamples = mediaInfo.bytesPlayedInTime(diff) / mediaInfo.getSampleSize();
 
             if (time.before(nextFrameStart))
@@ -283,35 +289,40 @@ public class PluggableMediaPlayer implements MediaPlayer {
 
         @Override
         public void run() {
-            LogHelper.i(TAG, "Feeding the audio player");
+            try {
+                LogHelper.i(TAG, "Feeding the audio player");
 
-            Clock.Instant now = Clock.getTime();
+                Clock.Instant now = Clock.getTime();
 
-            Clock.Duration frameTime = mediaInfo.timeToPlayBytes(mediaInfo.frameSize);
-            Clock.Duration preloadBufferSize = frameTime.multiply(PRELOAD_SIZE);
-            Clock.Instant bufferEnd = now.add(preloadBufferSize);
+                Clock.Duration frameTime = mediaInfo.timeToPlayBytes(mediaInfo.frameSize);
+                Clock.Duration preloadBufferSize = frameTime.multiply(PRELOAD_SIZE);
+                Clock.Instant bufferEnd = now.add(preloadBufferSize);
 
-            while (nextFrameStart.before(bufferEnd)) {
-                LogHelper.i(TAG, "Inserting frame into the buffer for playback at ", nextFrameStart);
-                ByteBuffer read = file.decodeFrame();
-                ByteBuffer left = ByteBuffer.allocate(read.limit()/mediaInfo.channels);
-                ByteBuffer right = ByteBuffer.allocate(read.limit()/mediaInfo.channels);
+                while (nextFrameStart.before(bufferEnd)) {
+                    LogHelper.i(TAG, "Inserting frame into the buffer for playback at ", nextFrameStart);
+                    ByteBuffer read = file.decodeFrame();
+                    ByteBuffer left = ByteBuffer.allocate(read.limit() / mediaInfo.channels);
+                    ByteBuffer right = ByteBuffer.allocate(read.limit() / mediaInfo.channels);
 
-                MP3MediaInfo cMI = new MP3MediaInfo(mediaInfo.sampleRate, 1, mediaInfo.frameSize / mediaInfo.channels, mediaInfo.encoding);
+                    MP3MediaInfo cMI = new MP3MediaInfo(mediaInfo.sampleRate, 1, mediaInfo.frameSize / mediaInfo.channels, mediaInfo.encoding);
 
-                for(int i = read.position(); i < read.limit(); i += mediaInfo.getSampleSize()) {
-                    for(int j = 0; j < mediaInfo.encoding.getSampleSize(); j++)
-                        left.put(read.get());
-                    for(int j = 0; j < mediaInfo.encoding.getSampleSize(); j++)
-                        right.put(read.get());
+                    for (int i = read.position(); i < read.limit(); i += mediaInfo.getSampleSize()) {
+                        for (int j = 0; j < mediaInfo.encoding.getSampleSize(); j++)
+                            left.put(read.get());
+                        for (int j = 0; j < mediaInfo.encoding.getSampleSize(); j++)
+                            right.put(read.get());
+                    }
+                    left.flip();
+                    right.flip();
+                    player.pushFrame(cMI, nextFrameStart, left);
+                    for (AudioMixer slave : slaves)
+                        slave.pushFrame(cMI, nextFrameStart, right);
+                    nextSample = file.tell();
+                    nextFrameStart = nextFrameStart.add(mediaInfo.timeToPlayBytes(read.limit()));
                 }
-                left.flip();
-                right.flip();
-                player.pushFrame(cMI, nextFrameStart, left);
-                for (AudioMixer slave : slaves)
-                    slave.pushFrame(cMI, nextFrameStart, right);
-                nextSample = file.tell();
-                nextFrameStart = nextFrameStart.add(mediaInfo.timeToPlayBytes(read.limit()));
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
             }
         }
     }

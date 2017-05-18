@@ -65,17 +65,26 @@ public class TCPServerConnectionFactory implements Lifecycle, TimeAwareRunnable 
                 }
 
                 MessageConnection connection = new MessageConnection(socket, executorService);
-                connections.add(connection);
-                listener.onNewConnection(connection);
-                //TODO: Submit to executor
-                connection.start();
+                try {
+                    listener.onNewConnection(connection);
+                    connections.add(connection);
+
+                    //TODO: Submit to executor
+                    connection.start();
+                } catch(Exception e) {
+                    LogHelper.w(TAG, "Error processing new client");
+                }
             }
         } catch (SocketException e) {
-            if(listening && !running)
+            if(listening && !running) {
                 LogHelper.i(TAG, "Socket closed");
-            LogHelper.e(TAG, "Error on socket server ", port, " Stacktrace: ", e);
+            } else {
+                LogHelper.e(TAG, "Error on socket server ", port);
+                e.printStackTrace();
+            }
         } catch (Exception e) {
-            LogHelper.e(TAG, "Error on socket server ", port, " Stacktrace: ", e);
+            LogHelper.e(TAG, "Error on socket server ", port);
+            e.printStackTrace();
         } finally {
             listening = false;
         }

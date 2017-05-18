@@ -1,11 +1,7 @@
 package rocks.stalin.android.app.playback;
 
-import com.google.android.gms.cast.MediaInfo;
-
-import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.PriorityQueue;
-import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -24,6 +20,8 @@ public class LocalAudioMixer implements AudioMixer {
 
     private Lock bufferLock = new ReentrantLock(true);
     private ByteBuffer nativeBuffer;
+    private int lastReadEnd;
+    private int lastWriteEnd;
     private Clock.Instant bufferStart;
     private PriorityQueue<TimedAction> actions;
 
@@ -73,19 +71,22 @@ public class LocalAudioMixer implements AudioMixer {
 
             //Compact the buffer, copying all the remaining data to the start of the buffer
             //also sets the position to the end of the limit to make us ready for the next write
+            lastReadEnd -= nativeBuffer.position();
+            lastWriteEnd -= nativeBuffer.position();
             nativeBuffer.compact();
 
             //Put the new sounddata into the buffer at the correct offset to fit with the time.
-            Clock.Duration diff = bufferStart.timeBetween(timeToPlay);
+            Clock.Duration diff = timeToPlay.sub(bufferStart);
             int offset = mediaInfo.bytesPlayedInTime(diff);
             if(offset % bufferMediaInfo.getSampleSize() != 0) {
                 offset -= offset % bufferMediaInfo.getSampleSize();
             }
 
-            if(nativeBuffer.position() != offset) {
-                LogHelper.w(TAG, "Bad offset, we are wrong by ", offset - nativeBuffer.position());
-                if(Math.abs(offset - nativeBuffer.position()) < 1000)
-                    offset = nativeBuffer.position();
+            if(lastWriteEnd != offset) {
+                if(Math.abs(offset - lastWriteEnd) < 1000)
+                    offset = lastWriteEnd;
+                else
+                    LogHelper.w(TAG, "Bad offset, we are wrong by ", offset - nativeBuffer.position());
             }
 
             nativeBuffer.position(offset);
@@ -96,6 +97,7 @@ public class LocalAudioMixer implements AudioMixer {
                 soundData.limit(soundData.position() + bufferSpace);
             }
             nativeBuffer.put(soundData);
+            lastWriteEnd = nativeBuffer.position();
 
             //Flip the buffer to make us ready for the next reads
             nativeBuffer.flip();
@@ -128,16 +130,21 @@ public class LocalAudioMixer implements AudioMixer {
             return mixedBuffer;
         }
 
-        Clock.Duration diff = bufferStart.timeBetween(time);
+        if(time.before(bufferStart))
+            throw new IllegalStateException("You cant read before buffer starting point: " + time + " / " + bufferStart);
+
+        Clock.Duration diff = time.sub(bufferStart);
         int offset = bufferMediaInfo.bytesPlayedInTime(diff);
+        LogHelper.i(TAG, "diff is ", diff);
         if(offset % bufferMediaInfo.getSampleSize() != 0) {
             offset -= offset % bufferMediaInfo.getSampleSize();
         }
 
-        if(nativeBuffer.position() != offset) {
-            LogHelper.w(TAG, "We will be skipping, ", offset - nativeBuffer.position(), " bytes to be exact");
-            if(Math.abs(offset - nativeBuffer.position()) < 1000)
-                offset = nativeBuffer.position();
+        if(lastReadEnd != offset) {
+            if(Math.abs(offset - lastReadEnd) < 1000)
+                offset = lastReadEnd;
+            else
+                LogHelper.w(TAG, "We will be skipping ", offset - lastReadEnd, " bytes");
         }
 
         bufferLock.lock();
@@ -149,7 +156,7 @@ public class LocalAudioMixer implements AudioMixer {
             ByteBuffer dupBuffer = nativeBuffer.duplicate();
             dupBuffer.limit(offset + missingBytes);
             mixedBuffer.put(dupBuffer);
-            nativeBuffer.position(dupBuffer.position());
+            lastReadEnd = dupBuffer.position();
         } finally {
             bufferLock.unlock();
         }
@@ -159,9 +166,14 @@ public class LocalAudioMixer implements AudioMixer {
     }
 
     public void flush() {
-        if(nativeBuffer != null)
-            nativeBuffer.clear();
-        bufferStart = null;
+        bufferLock.lock();
+        try {
+            if (nativeBuffer != null)
+                nativeBuffer.clear();
+            bufferStart = null;
+        } finally {
+            bufferLock.unlock();
+        }
     }
 
     public interface NewActionListener {

@@ -77,7 +77,7 @@ public class ClientMusicService extends Service {
 
         localAudioMixer = new LocalAudioMixer();
         sink = new LocalSoundSink(localAudioMixer);
-        Debug.startMethodTracing("trce");
+        //Debug.startMethodTracing("trce");
 
         PowerManager pm = getSystemService(PowerManager.class);
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SMUS-Client");
@@ -180,7 +180,7 @@ public class ClientMusicService extends Service {
         sink.release();
         if(wakeLock.isHeld())
             wakeLock.release();
-        Debug.stopMethodTracing();
+        //Debug.stopMethodTracing();
         super.onDestroy();
     }
 }

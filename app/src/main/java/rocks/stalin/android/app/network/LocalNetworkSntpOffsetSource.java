@@ -1,13 +1,9 @@
 package rocks.stalin.android.app.network;
 
-import com.google.android.gms.tasks.Task;
-
 import java.io.IOException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import rocks.stalin.android.app.framework.Lifecycle;
-import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.framework.concurrent.TaskScheduler;
 import rocks.stalin.android.app.proto.SntpRequest;
 import rocks.stalin.android.app.proto.SntpResponse;
@@ -23,6 +19,7 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
     private ScheduledFuture<?> future;
 
     private Clock.Duration latestOffset = new Clock.Duration(0L, 0);
+    private boolean isBefore;
 
     private boolean running = false;
 
@@ -65,18 +62,35 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
         connection.addHandler(SntpResponse.class, new MessageConnection.MessageListener<SntpResponse, SntpResponse.Builder>() {
             @Override
             public void packetReceived(SntpResponse message) {
-                LogHelper.i(TAG, "Sntp response received!!!");
-                Clock.Instant requestSent = new Clock.Instant(message.requestSent.millis, message.requestSent.nanos);
-                Clock.Instant requestReceived = new Clock.Instant(message.requestReceived.millis, message.requestReceived.nanos);
-                Clock.Instant responseSent = new Clock.Instant(message.responseSent.millis, message.responseSent.nanos);
-                Clock.Instant responseReceived = Clock.getTime();
+                Clock.Instant T3 = Clock.getTime();
+                Clock.Instant T2 = new Clock.Instant(message.responseSent.millis, message.responseSent.nanos);
+
+                Clock.Instant T1 = new Clock.Instant(message.requestReceived.millis, message.requestReceived.nanos);
+                Clock.Instant T0 = new Clock.Instant(message.requestSent.millis, message.requestSent.nanos);
+
+                LogHelper.i(TAG, "Simple calc: ", ((message.requestReceived.millis - message.requestSent.millis) + (message.responseSent.millis - T3.getMillis()))/ 2);
+
+                // Sanity check, throw error if the clocks resync in an unfortunate manner while we sync
+                if(T0.sub(T3).shorterThan(T1.sub(T2))) {
+                    LogHelper.w(TAG, "Bad sync timestamps");
+                    LogHelper.w(TAG, "T03: ", T0.sub(T3));
+                    LogHelper.w(TAG, "T12: ", T1.sub(T2));
+                    return;
+                }
 
                 // ((T1 - T0) + (T2 - T3)) / 2
-                Clock.Duration requestOffset = requestSent.timeBetween(requestReceived);
-                Clock.Duration responseOffset = responseSent.timeBetween(responseReceived);
-                Clock.Duration sum = requestOffset.add(responseOffset);
-                latestOffset = sum.divide(2);
-                LogHelper.i(TAG, "New sntp offset: ", latestOffset);
+                try {
+                    Clock.Duration requestOffset = T1.sub(T0);
+                    Clock.Duration responseOffset = T2.sub(T3);
+                    Clock.Duration sum = requestOffset.add(responseOffset);
+                    latestOffset = sum.divide(2);
+                    LogHelper.i(TAG, "Time correction: ", latestOffset);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    LogHelper.e(TAG, "T0: ", T0, " T1: ", T1);
+                    LogHelper.e(TAG, "T2: ", T2, " T3: ", T3);
+                    throw e;
+                }
             }
         });
 

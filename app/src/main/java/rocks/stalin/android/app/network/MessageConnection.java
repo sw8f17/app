@@ -55,22 +55,26 @@ public class MessageConnection implements Lifecycle, TimeAwareRunnable {
     }
 
     public void run() {
-        while(running) {
-            try {
-                int type = dis.readByte();
-                int length = dis.readInt();
-                if(length < 0){
-                    LogHelper.e(TAG, "We got a length of ", length, " which doesn't make any sense. The type was ", type, " by the way");
-                }
-                byte[] data = new byte[length];
-                dis.readFully(data, 0, length);
+        try {
+            while (running) {
+                try {
+                    int type = dis.readByte();
+                    int length = dis.readInt();
+                    if (length < 0) {
+                        LogHelper.e(TAG, "We got a length of ", length, " which doesn't make any sense. The type was ", type, " by the way");
+                    }
+                    byte[] data = new byte[length];
+                    dis.readFully(data, 0, length);
 
-                processMessage(type, data);
-            } catch (IOException e) {
-                LogHelper.e(TAG, "Error reading from master device");
-                e.printStackTrace();
-                running = false;
+                    processMessage(type, data);
+                } catch (IOException e) {
+                    LogHelper.e(TAG, "Error reading from master device");
+                    e.printStackTrace();
+                    running = false;
+                }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -140,12 +144,15 @@ public class MessageConnection implements Lifecycle, TimeAwareRunnable {
 
         MessageListener handler = handlers.get(type);
 
-        if(handler != null && message != null) {
-            /*
-             * This is unsafe, since it's deserializing the network data.
-             */
-            handler.packetReceived(message);
+        if(handler == null) {
+            LogHelper.w(TAG, "No handler registered for received message ", message.getClass().getName());
+            return;
         }
+
+        /*
+         * This is unsafe, since it's deserializing the network data.
+         */
+        handler.packetReceived(message);
     }
 
     public <M extends Message<M, B>, B extends Message.Builder<M, B>> void send(M packet, Class<? extends M> clazz) throws IOException {
@@ -162,7 +169,6 @@ public class MessageConnection implements Lifecycle, TimeAwareRunnable {
     }
 
     public interface MessageListener<M extends Message<M, B>, B extends Message.Builder<M, B>> {
-        @SuppressWarnings("deserialize")
         void packetReceived(M message);
     }
 }

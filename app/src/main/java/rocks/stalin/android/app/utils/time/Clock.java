@@ -49,6 +49,8 @@ public class Clock {
         private int nanos;
 
         public Instant(long millis, int nanos) {
+            if(millis < 0 || nanos < 0)
+                throw new IllegalArgumentException("How do you expect me to deal with negative instants");
             this.millis = millis;
             if(nanos >= NANO_TO_MILLIS)
                 throw new IllegalArgumentException("The nanos given was greater than one millisecond: " +  nanos);
@@ -75,9 +77,16 @@ public class Clock {
             return nanos;
         }
 
-        public Duration timeBetween(Instant o) {
-            long newMillis = Math.abs(millis - o.getMillis());
-            int newNanos = Math.abs(nanos - o.getNanos());
+        public Duration sub(Instant o) {
+            long newMillis = millis - o.getMillis();
+            int newNanos = nanos - o.getNanos();
+            if(newNanos < 0 && newMillis > 0) {
+                newMillis -= 1;
+                newNanos += NANO_TO_MILLIS;
+            } else if(newNanos > 0 && newMillis < 0) {
+                newMillis += 1;
+                newNanos -= NANO_TO_MILLIS;
+            }
             return new Duration(newMillis, newNanos);
         }
 
@@ -85,13 +94,25 @@ public class Clock {
             long newNanos = nanos + expectedEnd.getNanos();
             long newMillis = millis + expectedEnd.getMillis() + (newNanos / NANO_TO_MILLIS);
             newNanos %= NANO_TO_MILLIS;
+            if(newNanos < 0 && newMillis > 0) {
+                newMillis -= 1;
+                newNanos += NANO_TO_MILLIS;
+            } else if(newNanos > 0 && newMillis < 0) {
+                newMillis += 1;
+                newNanos -= NANO_TO_MILLIS;
+            }
             return new Instant(newMillis, (int) newNanos);
         }
 
         public Instant sub(Duration expectedEnd) {
             long newNanos = nanos - expectedEnd.getNanos();
-            long newMillis = (millis - expectedEnd.getMillis()) - (newNanos < 0 ? 1 : 0);
-            newNanos = newNanos < 0 ? NANO_TO_MILLIS + newNanos : newNanos;
+            long newMillis = millis - expectedEnd.getMillis();
+            if(newNanos < 0) {
+                newMillis -= 1;
+                newNanos = NANO_TO_MILLIS + newNanos;
+            }
+            newMillis += newNanos / NANO_TO_MILLIS;
+            newNanos %= NANO_TO_MILLIS;
             return new Instant(newMillis, (int) newNanos);
         }
 
@@ -118,8 +139,12 @@ public class Clock {
 
         public Duration(long millis, int nanos) {
             this.millis = millis;
-            if(nanos / NANO_TO_MILLIS > 0)
-                throw new IllegalArgumentException("The nanos given was greater than one millisecond");
+            if(nanos / NANO_TO_MILLIS != 0)
+                throw new IllegalArgumentException("Durations have to be normalized");
+            if(millis > 0 && nanos < 0)
+                throw new IllegalArgumentException("Inconsistent signs");
+            if(millis < 0 && nanos > 0)
+                throw new IllegalArgumentException("Inconsistent signs");
 
             this.nanos = nanos;
         }
@@ -150,6 +175,8 @@ public class Clock {
             long roundedMillis = millis;
             if(nanos >= NANO_TO_MILLIS/2)
                 roundedMillis += 1;
+            else if(nanos < -NANO_TO_MILLIS/2)
+                roundedMillis -= 1;
             return roundedMillis;
         }
 
@@ -158,6 +185,13 @@ public class Clock {
             long newMillis = this.millis + operand.millis;
             newMillis += newNanos / NANO_TO_MILLIS;
             newNanos %= NANO_TO_MILLIS;
+            if(newNanos < 0 && newMillis > 0) {
+                newMillis -= 1;
+                newNanos += NANO_TO_MILLIS;
+            } else if(newNanos > 0 && newMillis < 0) {
+                newMillis += 1;
+                newNanos -= NANO_TO_MILLIS;
+            }
 
             return new Duration(newMillis, newNanos);
         }
@@ -187,10 +221,15 @@ public class Clock {
             // There might be a remainder from the millis division, convert to nanos and try again.
             long remainderMillis = this.millis % denominator;
             long newNanos = (this.nanos + remainderMillis * NANO_TO_MILLIS) / denominator;
-            newMillis += newNanos / NANO_TO_MILLIS;
-            newNanos %= NANO_TO_MILLIS;
 
             return new Duration(newMillis, (int) newNanos);
+        }
+
+        public boolean shorterThan(Duration other) {
+            long otherMillisAbs = Math.abs(other.getMillis());
+            long thisMillisAbs = Math.abs(getMillis());
+            return thisMillisAbs == otherMillisAbs ? Math.abs(getNanos()) < Math.abs(other.getNanos()) : thisMillisAbs < otherMillisAbs;
+
         }
 
         @Override
