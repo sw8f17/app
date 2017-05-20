@@ -2,7 +2,7 @@ package rocks.stalin.android.app.playback.actions;
 
 import rocks.stalin.android.app.network.Messageable;
 import rocks.stalin.android.app.playback.AudioMixer;
-import rocks.stalin.android.app.playback.LocalSoundSink;
+import rocks.stalin.android.app.playback.AudioSink;
 import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.utils.time.Clock;
 
@@ -16,7 +16,7 @@ public class PauseAction extends TimedAction implements Messageable<PauseCommand
     }
 
     @Override
-    public void execute(LocalSoundSink at, AudioMixer mixer) {
+    public void execute(AudioSink at, AudioMixer mixer) {
         at.stop();
         mixer.flush();
     }

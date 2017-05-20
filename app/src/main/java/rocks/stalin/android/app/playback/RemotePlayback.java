@@ -30,6 +30,7 @@ import android.support.v4.media.session.PlaybackStateCompat;
 import android.text.TextUtils;
 
 import rocks.stalin.android.app.MusicService;
+import rocks.stalin.android.app.framework.concurrent.TaskScheduler;
 import rocks.stalin.android.app.model.MusicProvider;
 import rocks.stalin.android.app.model.MusicProviderSource;
 import rocks.stalin.android.app.network.MessageConnection;
@@ -67,7 +68,8 @@ public class RemotePlayback implements Playback, AudioManager.OnAudioFocusChange
 
     private final Context mContext;
     private final WifiManager.WifiLock mWifiLock;
-    private OffsetSource timeProvider;
+    private final OffsetSource timeProvider;
+    private final TaskScheduler scheduler;
     private int mState;
     private boolean mPlayOnFocusGain;
     private Callback mCallback;
@@ -79,7 +81,7 @@ public class RemotePlayback implements Playback, AudioManager.OnAudioFocusChange
     // Type of audio focus we have:
     private int mAudioFocus = AUDIO_NO_FOCUS_NO_DUCK;
     private final AudioManager mAudioManager;
-    private PluggableMediaPlayer mediaPlayer;
+    private MediaPlayerImpl mediaPlayer;
 
     private final IntentFilter mAudioNoisyIntentFilter =
             new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
@@ -99,7 +101,7 @@ public class RemotePlayback implements Playback, AudioManager.OnAudioFocusChange
         }
     };
 
-    public RemotePlayback(Context context, MusicProvider musicProvider, OffsetSource timeProvider) {
+    public RemotePlayback(Context context, MusicProvider musicProvider, OffsetSource timeProvider, TaskScheduler scheduler) {
         this.mContext = context;
         this.mMusicProvider = musicProvider;
         this.mAudioManager = (AudioManager) context.getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
@@ -107,6 +109,7 @@ public class RemotePlayback implements Playback, AudioManager.OnAudioFocusChange
         this.mWifiLock = ((WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE))
                 .createWifiLock(WifiManager.WIFI_MODE_FULL, "smus_lock");
         this.timeProvider = timeProvider;
+        this.scheduler = scheduler;
         this.mState = PlaybackStateCompat.STATE_NONE;
     }
 
@@ -455,8 +458,8 @@ public class RemotePlayback implements Playback, AudioManager.OnAudioFocusChange
     private void createMediaPlayerIfNeeded() {
         LogHelper.d(TAG, "createMediaPlayerIfNeeded. needed? ", (mediaPlayer ==null));
         if (mediaPlayer == null) {
-            PluggableMediaPlayer pluggableMediaPlayer = new PluggableMediaPlayer();
-            mediaPlayer = pluggableMediaPlayer;
+            MediaPlayerImpl mediaplayer = new MediaPlayerImpl(scheduler);
+            mediaPlayer = mediaplayer;
 
             // Make sure the media player will acquire a wake-lock while
             // playing. If we don't do that, the CPU might go to sleep while the

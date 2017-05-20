@@ -5,11 +5,12 @@ import org.junit.Test;
 
 import java.util.concurrent.CountDownLatch;
 
+import rocks.stalin.android.app.framework.SimpleTaskScheduler;
+import rocks.stalin.android.app.framework.concurrent.observable.SettableFuture;
+import rocks.stalin.android.app.framework.concurrent.observable.SettableFutureImpl;
 import rocks.stalin.android.app.framework.functional.Consumer;
-import rocks.stalin.android.app.utils.time.Clock;
 
 import static org.hamcrest.core.IsEqual.equalTo;
-import static org.junit.Assert.*;
 
 public class SettableFutureImplTest {
     TaskExecutor executor = new SimpleTaskScheduler(10, "TEST_POOL-%d");

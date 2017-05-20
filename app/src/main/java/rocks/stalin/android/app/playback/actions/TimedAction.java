@@ -1,15 +1,9 @@
 package rocks.stalin.android.app.playback.actions;
 
-import android.media.AudioTrack;
 import android.support.annotation.NonNull;
 
-import com.squareup.wire.Message;
-
-import java.sql.Time;
-
-import rocks.stalin.android.app.network.Messageable;
 import rocks.stalin.android.app.playback.AudioMixer;
-import rocks.stalin.android.app.playback.LocalSoundSink;
+import rocks.stalin.android.app.playback.AudioSink;
 import rocks.stalin.android.app.proto.Timestamp;
 import rocks.stalin.android.app.utils.time.Clock;
 
@@ -28,7 +22,7 @@ public abstract class TimedAction implements Comparable<TimedAction> {
         return time;
     }
 
-    public abstract void execute(LocalSoundSink at, AudioMixer mixer);
+    public abstract void execute(AudioSink at, AudioMixer mixer);
     public abstract String name();
 
     protected Timestamp getTimestampMessage() {

@@ -1,4 +1,4 @@
-package rocks.stalin.android.app.framework;
+package rocks.stalin.android.app.framework.concurrent;
 
 /**
  * Created by delusional on 5/13/17.

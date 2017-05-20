@@ -1,4 +1,4 @@
-package rocks.stalin.android.app.framework.concurrent;
+package rocks.stalin.android.app.framework.concurrent.observable;
 
 import android.support.annotation.NonNull;
 

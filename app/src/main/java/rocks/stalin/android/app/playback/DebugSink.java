@@ -36,7 +36,7 @@ class DebugSink implements AudioSink {
     }
 
     @Override
-    public void change(MP3MediaInfo mediaInfo, PluggableMediaPlayer mediaBuffer) {
+    public void change(MP3MediaInfo mediaInfo, MediaPlayerImpl mediaBuffer) {
 
     }
 }

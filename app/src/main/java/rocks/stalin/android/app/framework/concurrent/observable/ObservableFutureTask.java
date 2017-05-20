@@ -1,10 +1,9 @@
-package rocks.stalin.android.app.framework.concurrent;
+package rocks.stalin.android.app.framework.concurrent.observable;
 
 import android.support.annotation.NonNull;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
 import rocks.stalin.android.app.framework.functional.Consumer;

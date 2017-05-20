@@ -1,4 +1,4 @@
-package rocks.stalin.android.app.framework.concurrent;
+package rocks.stalin.android.app.framework;
 
 import android.support.annotation.NonNull;
 
@@ -7,6 +7,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+
+import rocks.stalin.android.app.framework.concurrent.TaskScheduler;
 
 /**
  * Created by delusional on 5/12/17.

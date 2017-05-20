@@ -7,11 +7,9 @@ import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.widget.Toast;
 
-import rocks.stalin.android.app.framework.Lifecycle;
-import rocks.stalin.android.app.framework.concurrent.ObservableFuture;
-import rocks.stalin.android.app.framework.concurrent.SettableFutureImpl;
+import rocks.stalin.android.app.framework.concurrent.observable.ObservableFuture;
+import rocks.stalin.android.app.framework.concurrent.observable.SettableFutureImpl;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
-import rocks.stalin.android.app.framework.functional.Consumer;
 import rocks.stalin.android.app.utils.LogHelper;
 
 /**

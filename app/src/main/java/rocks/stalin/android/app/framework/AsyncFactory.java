@@ -1,8 +1,6 @@
 package rocks.stalin.android.app.framework;
 
-import java.util.concurrent.Future;
-
-import rocks.stalin.android.app.framework.concurrent.ObservableFuture;
+import rocks.stalin.android.app.framework.concurrent.observable.ObservableFuture;
 
 /**
  * Created by delusional on 5/14/17.

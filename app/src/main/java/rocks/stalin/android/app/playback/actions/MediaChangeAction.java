@@ -1,11 +1,9 @@
 package rocks.stalin.android.app.playback.actions;
 
-import com.squareup.wire.Message;
-
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.network.Messageable;
 import rocks.stalin.android.app.playback.AudioMixer;
-import rocks.stalin.android.app.playback.LocalSoundSink;
+import rocks.stalin.android.app.playback.AudioSink;
 import rocks.stalin.android.app.proto.MediaInfo;
 import rocks.stalin.android.app.proto.Metadata;
 import rocks.stalin.android.app.proto.SongChangeCommand;
@@ -25,7 +23,7 @@ public class MediaChangeAction extends TimedAction implements Messageable<SongCh
     }
 
     @Override
-    public void execute(LocalSoundSink at, AudioMixer mixer) {
+    public void execute(AudioSink at, AudioMixer mixer) {
         at.reset();
         at.change(mediaInfo);
         mixer.change(mediaInfo);

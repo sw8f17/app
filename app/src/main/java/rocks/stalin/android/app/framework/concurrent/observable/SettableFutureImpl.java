@@ -1,16 +1,9 @@
-package rocks.stalin.android.app.framework.concurrent;
+package rocks.stalin.android.app.framework.concurrent.observable;
 
 import android.support.annotation.NonNull;
-import android.support.v4.animation.ValueAnimatorCompat;
-import android.support.v7.widget.ThemedSpinnerAdapter;
-import android.telecom.Call;
 
-import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Condition;

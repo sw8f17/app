@@ -12,8 +12,8 @@ import java.util.concurrent.ExecutionException;
 
 import rocks.stalin.android.app.decoding.MP3Encoding;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
-import rocks.stalin.android.app.framework.ServiceLocator;
-import rocks.stalin.android.app.framework.concurrent.ObservableFuture;
+import rocks.stalin.android.app.framework.concurrent.ServiceLocator;
+import rocks.stalin.android.app.framework.concurrent.observable.ObservableFuture;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.framework.functional.Consumer;
 import rocks.stalin.android.app.network.MessageConnection;
@@ -22,7 +22,7 @@ import rocks.stalin.android.app.network.OffsetSourceFactory;
 import rocks.stalin.android.app.network.WifiP2PConnectionFactory;
 import rocks.stalin.android.app.network.WifiP2PManagerFacade;
 import rocks.stalin.android.app.playback.LocalAudioMixer;
-import rocks.stalin.android.app.playback.LocalSoundSink;
+import rocks.stalin.android.app.playback.AudioSink;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
 import rocks.stalin.android.app.playback.actions.PauseAction;
 import rocks.stalin.android.app.playback.actions.PlayAction;
@@ -51,7 +51,7 @@ public class ClientMusicService extends Service {
     private TaskExecutor executorService;
 
     private LocalAudioMixer localAudioMixer;
-    private LocalSoundSink sink;
+    private AudioSink sink;
     private OffsetSource timeService = null;
 
     private PowerManager.WakeLock wakeLock;
@@ -76,7 +76,7 @@ public class ClientMusicService extends Service {
         manager = new WifiP2PManagerFacade(rawManager, channel);
 
         localAudioMixer = new LocalAudioMixer();
-        sink = new LocalSoundSink(localAudioMixer);
+        sink = new AudioSink(localAudioMixer);
         //Debug.startMethodTracing("trce");
 
         PowerManager pm = getSystemService(PowerManager.class);

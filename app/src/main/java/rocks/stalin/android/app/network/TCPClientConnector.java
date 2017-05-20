@@ -6,8 +6,8 @@ import java.net.Socket;
 import java.util.concurrent.Callable;
 
 import rocks.stalin.android.app.framework.AsyncFactory;
-import rocks.stalin.android.app.framework.concurrent.ObservableFuture;
-import rocks.stalin.android.app.framework.concurrent.ObservableFutureTask;
+import rocks.stalin.android.app.framework.concurrent.observable.ObservableFuture;
+import rocks.stalin.android.app.framework.concurrent.observable.ObservableFutureTask;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.utils.LogHelper;
 

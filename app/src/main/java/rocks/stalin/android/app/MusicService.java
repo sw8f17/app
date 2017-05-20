@@ -42,8 +42,9 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
-import rocks.stalin.android.app.framework.ServiceLocator;
+import rocks.stalin.android.app.framework.concurrent.ServiceLocator;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
+import rocks.stalin.android.app.framework.concurrent.TaskScheduler;
 import rocks.stalin.android.app.model.ExternalStorageSource;
 import rocks.stalin.android.app.model.MusicProvider;
 import rocks.stalin.android.app.network.LocalOffsetService;
@@ -127,6 +128,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
     private static final int STOP_DELAY = 30000;
 
     private TaskExecutor executorService;
+    private TaskScheduler scheduler;
 
     private MusicProvider mMusicProvider;
     private PlaybackManager mPlaybackManager;
@@ -156,6 +158,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
         timeProvider = new LocalOffsetService();
         executorService = ServiceLocator.getInstance().getService(TaskExecutor.class);
+        scheduler = ServiceLocator.getInstance().getService(TaskScheduler.class);
 
         mMusicProvider = new MusicProvider(new ExternalStorageSource(getApplicationContext()));
         //mMusicProvider = new MusicProvider();
@@ -205,7 +208,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
         server = new WifiP2pServiceAnnouncer(manager, 8009, executorService);
         server.start();
 
-        remotePlayback = new RemotePlayback(this, mMusicProvider, timeProvider);
+        remotePlayback = new RemotePlayback(this, mMusicProvider, timeProvider, scheduler);
         mPlaybackManager = new PlaybackManager(this, getResources(), mMusicProvider, queueManager,
                 remotePlayback);
 
