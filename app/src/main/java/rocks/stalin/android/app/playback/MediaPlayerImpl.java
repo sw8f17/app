@@ -98,7 +98,8 @@ public class MediaPlayerImpl implements MediaPlayer {
 
         Clock.Instant time = Clock.getTime();
         MediaChangeAction action = new MediaChangeAction(time, new MP3MediaInfo(mediaInfo.sampleRate, 1, mediaInfo.frameSize/mediaInfo.channels, mediaInfo.encoding));
-        backend.pushAction(action);
+        for(TimedEventQueue slave : slaves)
+            slave.pushAction(action);
 
         state = PlaybackState.Initialized;
     }
@@ -110,6 +111,7 @@ public class MediaPlayerImpl implements MediaPlayer {
 
     @Override
     public void prepareAsync() {
+        Thread.dumpStack();
         if(state != PlaybackState.Initialized) {
             throw new IllegalStateException("You can't prepareAsync from " + state);
         }
@@ -152,7 +154,8 @@ public class MediaPlayerImpl implements MediaPlayer {
         feeder.start();
 
         PlayAction action = new PlayAction(startTime);
-        backend.pushAction(action);
+        for(TimedEventQueue slave : slaves)
+            slave.pushAction(action);
 
         state = PlaybackState.Playing;
     }
@@ -170,7 +173,8 @@ public class MediaPlayerImpl implements MediaPlayer {
         Clock.Instant pauseTime = Clock.getTime();
 
         PauseAction action = new PauseAction(pauseTime);
-        backend.pushAction(action);
+        for(TimedEventQueue slave : slaves)
+            slave.pushAction(action);
 
         feeder.stop();
         pauseSample = (int)feeder.tellAt(pauseTime);
@@ -247,7 +251,7 @@ public class MediaPlayerImpl implements MediaPlayer {
 
     @Override
     public void connectBackend(TimedEventQueue remoteBackend) {
-        slaves.add(backend);
+        slaves.add(remoteBackend);
     }
 
 }

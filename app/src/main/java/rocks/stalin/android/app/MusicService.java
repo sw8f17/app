@@ -184,7 +184,9 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
                     @Override
                     public void onCurrentQueueIndexUpdated(int queueIndex) {
-                        mPlaybackManager.handlePlayRequest();
+                        //TODO: This causes mediaPlayer the mediaplayer to get restarted twice on song change
+                        //There's currently a race condition there -JJ 21/05-2017
+                        //mPlaybackManager.handlePlayRequest();
                     }
 
                     @Override

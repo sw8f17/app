@@ -84,7 +84,7 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
                 break;
 
             for (TimedEventQueue slave : slaves)
-                slave.pushFrame(cMI, nextFrameStart, right);
+                slave.pushFrame(cMI, nextFrameStart, right.duplicate());
             nextSample = file.tell();
             nextFrameStart = nextFrameStart.add(mediaInfo.timeToPlayBytes(read.limit()));
         }

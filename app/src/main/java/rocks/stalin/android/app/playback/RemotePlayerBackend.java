@@ -54,7 +54,7 @@ class RemotePlayerBackend implements TimedEventQueue {
         ObservableFutureTask<Void> task = new ObservableFutureTask<>(new Runnable() {
             @Override
             public void run() {
-                final Message<M, B> actionMessage = action.toMessage();
+                Message<M, B> actionMessage = action.toMessage();
                 try {
                     connection.send(actionMessage, actionMessage.getClass());
                 } catch (IOException e) {

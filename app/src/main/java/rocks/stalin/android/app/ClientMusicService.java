@@ -74,7 +74,7 @@ public class ClientMusicService extends Service {
         super.onCreate();
 
         executor = ServiceLocator.getInstance().getService(TaskExecutor.class);
-        executor = ServiceLocator.getInstance().getService(TaskScheduler.class);
+        scheduler = ServiceLocator.getInstance().getService(TaskScheduler.class);
 
         WifiP2pManager rawManager = getSystemService(WifiP2pManager.class);
         WifiP2pManager.Channel channel = rawManager.initialize(this, getMainLooper(), null);

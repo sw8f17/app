@@ -64,6 +64,11 @@ public class AudioSink {
                         break;
                     }
 
+                    if(at.getPlayState() != AudioTrack.PLAYSTATE_PLAYING &&
+                            at.getPlayState() != AudioTrack.PLAYSTATE_PAUSED) {
+                        continue;
+                    }
+
                     try {
                         AudioTimestamp timestamp = new AudioTimestamp();
                         Clock.Instant now;
