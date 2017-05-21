@@ -11,7 +11,7 @@ import rocks.stalin.android.app.utils.time.Clock;
  * Created by delusional on 5/4/17.
  */
 
-public class PauseAction extends TimedAction implements Messageable<PauseCommand, PauseCommand.Builder> {
+public class PauseAction extends TimedAction<PauseCommand, PauseCommand.Builder> {
     public PauseAction(Clock.Instant time) {
         super(time);
     }

@@ -15,7 +15,7 @@ import rocks.stalin.android.app.utils.time.Clock;
  * Created by delusional on 5/10/17.
  */
 
-public class MediaChangeAction extends TimedAction implements Messageable<SongChangeCommand, SongChangeCommand.Builder> {
+public class MediaChangeAction extends TimedAction<SongChangeCommand, SongChangeCommand.Builder> {
     private MP3MediaInfo mediaInfo;
 
     public MediaChangeAction(Clock.Instant time, MP3MediaInfo mediaInfo) {

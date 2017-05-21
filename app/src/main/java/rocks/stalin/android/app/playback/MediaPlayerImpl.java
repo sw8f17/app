@@ -74,7 +74,7 @@ public class MediaPlayerImpl implements MediaPlayer {
     @Override
     public void reset() {
         state = PlaybackState.Stopped;
-        if(feeder.isRunning()) {
+        if(feeder != null && feeder.isRunning()) {
             feeder.stop();
         }
         feeder = null;

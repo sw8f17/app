@@ -11,7 +11,7 @@ import rocks.stalin.android.app.utils.time.Clock;
  * Created by delusional on 5/4/17.
  */
 
-public class PlayAction extends TimedAction implements Messageable<PlayCommand, PlayCommand.Builder>{
+public class PlayAction extends TimedAction<PlayCommand, PlayCommand.Builder>{
     public PlayAction(Clock.Instant time) {
         super(time);
     }
