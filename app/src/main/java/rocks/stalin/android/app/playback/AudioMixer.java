@@ -13,10 +13,6 @@ import rocks.stalin.android.app.utils.time.Clock;
 public interface AudioMixer {
     void pushFrame(MP3MediaInfo mediaInfo, Clock.Instant nextTime, ByteBuffer read);
 
-    void pushAction(TimedAction action);
-
-    TimedAction readAction();
-
     void flush();
     void change(MP3MediaInfo mediaInfo);
 }

@@ -7,12 +7,13 @@ import android.os.PowerManager;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Callable;
 
 import rocks.stalin.android.app.decoding.MP3Decoder;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.framework.concurrent.TaskScheduler;
+import rocks.stalin.android.app.framework.concurrent.observable.ObservableFutureTask;
+import rocks.stalin.android.app.framework.functional.Consumer;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
 import rocks.stalin.android.app.playback.actions.PauseAction;
 import rocks.stalin.android.app.playback.actions.PlayAction;
@@ -29,28 +30,25 @@ public class MediaPlayerImpl implements MediaPlayer {
     private static final String TAG = LogHelper.makeLogTag(MediaPlayerImpl.class);
 
     private TaskScheduler scheduler;
-    private ScheduledFuture<?> feederHandle;
 
     private MP3Decoder decoder;
     private MP3File currentFile;
 
     private PlaybackState state;
 
-    private AudioSink sink;
-    private MediaPlayerBackend backend;
+    private TimedEventQueue backend;
 
     private OnPreparedListener preparedListener;
     private OnSeekCompleteListener seekCompleteListener;
 
-    private LocalAudioMixer localMixer;
-    private List<AudioMixer> slaves;
+    private List<TimedEventQueue> slaves;
     private MP3MediaInfo mediaInfo;
 
-    VirtualMediaPlayer feeder;
+    private VirtualMediaPlayer feeder;
 
     PowerManager.WakeLock wakeLock;
 
-    private long pauseSample;
+    private int pauseSample;
 
     public MediaPlayerImpl(TaskScheduler scheduler) {
         state = PlaybackState.Idle;
@@ -60,11 +58,13 @@ public class MediaPlayerImpl implements MediaPlayer {
         decoder = new MP3Decoder();
         decoder.init();
 
-        slaves = new ArrayList<>();
 
-        localMixer = new LocalAudioMixer();
-        sink = new AudioSink(localMixer);
-        backend = new MediaPlayerBackend(localMixer, sink);
+        LocalAudioMixer mixer = new LocalAudioMixer();
+        AudioSink sink = new AudioSink(mixer);
+        backend = new MediaPlayerBackend(mixer, sink, scheduler);
+
+        slaves = new ArrayList<>();
+        slaves.add(backend);
     }
 
     @Override
@@ -73,11 +73,9 @@ public class MediaPlayerImpl implements MediaPlayer {
 
     @Override
     public void reset() {
-        sink.reset();
-        localMixer.flush();
-        if(feederHandle != null) {
-            feederHandle.cancel(true);
-            feederHandle = null;
+        state = PlaybackState.Stopped;
+        if(feeder.isRunning()) {
+            feeder.stop();
         }
         feeder = null;
         if(currentFile != null) {
@@ -101,7 +99,6 @@ public class MediaPlayerImpl implements MediaPlayer {
         Clock.Instant time = Clock.getTime();
         MediaChangeAction action = new MediaChangeAction(time, new MP3MediaInfo(mediaInfo.sampleRate, 1, mediaInfo.frameSize/mediaInfo.channels, mediaInfo.encoding));
         backend.pushAction(action);
-        pushAction(action);
 
         state = PlaybackState.Initialized;
     }
@@ -113,18 +110,27 @@ public class MediaPlayerImpl implements MediaPlayer {
 
     @Override
     public void prepareAsync() {
-        Thread.dumpStack();
-        LogHelper.i(TAG, "Prepare");
         if(state != PlaybackState.Initialized) {
             throw new IllegalStateException("You can't prepareAsync from " + state);
         }
 
         state = PlaybackState.Preparing;
 
-        feeder = new VirtualMediaPlayer(currentFile, mediaInfo, localMixer, slaves, scheduler);
-
-        state = PlaybackState.Prepared;
-        preparedListener.onPrepared(this);
+        ObservableFutureTask<Void> prepareTask = new ObservableFutureTask<>(new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                feeder = new VirtualMediaPlayer(currentFile, mediaInfo, slaves, scheduler);
+                return null;
+            }
+        });
+        prepareTask.setListener(new Consumer<Void>() {
+            @Override
+            public void call(Void value) {
+                state = PlaybackState.Prepared;
+                preparedListener.onPrepared(MediaPlayerImpl.this);
+            }
+        });
+        scheduler.submit(prepareTask);
     }
 
     @Override
@@ -140,25 +146,15 @@ public class MediaPlayerImpl implements MediaPlayer {
 
         Clock.Instant startTime = Clock.getTime().add(Clock.Duration.fromMillis(1000));
 
-        currentFile.seek((int) pauseSample);
+        currentFile.seek(pauseSample);
 
         feeder.setStartTime(startTime);
-        //This may drift over time, but since we are mostly playing short tracks
-        //it might be ok? -JJ 10/05-2017
-        long period = mediaInfo.timeToPlayBytes(mediaInfo.frameSize).inMillis();
-        feederHandle = scheduler.submitWithFixedRate(feeder, period, TimeUnit.MILLISECONDS);
+        feeder.start();
 
         PlayAction action = new PlayAction(startTime);
-        pushAction(action);
+        backend.pushAction(action);
 
         state = PlaybackState.Playing;
-    }
-
-    private void pushAction(TimedAction action) {
-        localMixer.pushAction(action);
-        for(AudioMixer slave : slaves) {
-            slave.pushAction(action);
-        }
     }
 
     @Override
@@ -174,11 +170,10 @@ public class MediaPlayerImpl implements MediaPlayer {
         Clock.Instant pauseTime = Clock.getTime();
 
         PauseAction action = new PauseAction(pauseTime);
+        backend.pushAction(action);
 
-        pushAction(action);
-
-        feederHandle.cancel(true);
-        pauseSample = feeder.tellAt(pauseTime);
+        feeder.stop();
+        pauseSample = (int)feeder.tellAt(pauseTime);
 
         state = PlaybackState.Paused;
     }
@@ -196,12 +191,10 @@ public class MediaPlayerImpl implements MediaPlayer {
         state = PlaybackState.End;
 
         reset();
-        sink.release();
-        localMixer.flush();
+        backend.release();
         decoder.exit();
 
-        if(feederHandle != null)
-            feederHandle.cancel(true);
+        feeder.release();
 
         if(wakeLock != null && wakeLock.isHeld())
             wakeLock.release();
@@ -226,7 +219,6 @@ public class MediaPlayerImpl implements MediaPlayer {
 
     @Override
     public void setVolume(float gain1, float gain2) {
-        sink.setVolume(gain1, gain2);
     }
 
     @Override
@@ -253,7 +245,9 @@ public class MediaPlayerImpl implements MediaPlayer {
         this.seekCompleteListener = listener;
     }
 
-    public void addMixer(RemoteMixer remoteMixer) {
-        slaves.add(remoteMixer);
+    @Override
+    public void connectBackend(TimedEventQueue remoteBackend) {
+        slaves.add(backend);
     }
+
 }

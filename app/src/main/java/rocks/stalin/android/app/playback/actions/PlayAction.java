@@ -1,8 +1,9 @@
 package rocks.stalin.android.app.playback.actions;
 
+import com.squareup.wire.Message;
+
 import rocks.stalin.android.app.network.Messageable;
-import rocks.stalin.android.app.playback.AudioMixer;
-import rocks.stalin.android.app.playback.AudioSink;
+import rocks.stalin.android.app.playback.ActionStrategy;
 import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.utils.time.Clock;
 
@@ -15,8 +16,9 @@ public class PlayAction extends TimedAction implements Messageable<PlayCommand, 
         super(time);
     }
 
-    public void execute(AudioSink at, AudioMixer mixer) {
-        at.play();
+    @Override
+    public void execute(ActionStrategy backend) {
+        backend.play();
     }
 
     @Override
@@ -25,7 +27,7 @@ public class PlayAction extends TimedAction implements Messageable<PlayCommand, 
     }
 
     @Override
-    public PlayCommand toMessage() {
+    public Message toMessage() {
         return new PlayCommand.Builder()
                 .playtime(getTimestampMessage())
                 .build();

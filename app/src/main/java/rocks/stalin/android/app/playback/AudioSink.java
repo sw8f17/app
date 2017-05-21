@@ -23,11 +23,8 @@ import rocks.stalin.android.app.utils.time.Clock;
  * Created by delusional on 4/24/17.
  */
 
-public class AudioSink implements LocalAudioMixer.NewActionListener {
+public class AudioSink {
     public static final String TAG = LogHelper.makeLogTag(AudioSink.class);
-
-    private Timer timer = new Timer("SMUS - Action Scheduler", true);
-    private ActionTask scheduled = null;
 
     AudioTrack at;
 
@@ -45,7 +42,6 @@ public class AudioSink implements LocalAudioMixer.NewActionListener {
         //We want to preload the track
         audioWriteLock = new Semaphore(0, true);
         this.mixer = mixer;
-        mixer.setNewActionListener(this);
         mediaInfo = new MP3MediaInfo(44100, 1, 0, MP3Encoding.UNSIGNED16);
 
         audioThread = new Thread() {
@@ -213,78 +209,7 @@ public class AudioSink implements LocalAudioMixer.NewActionListener {
         }
     }
 
-    private Lock actionLock = new ReentrantLock(true);
-
-    @Override
-    public boolean onNewAction(final TimedAction action) {
-        actionLock.lock();
-
-        try {
-            Clock.Instant now = Clock.getTime();
-            if (action.getTime().before(now)) {
-                LogHelper.w(TAG, "Woops, we missed that deadline. Let's just do it now");
-                action.execute(this, mixer);
-                return true;
-            }
-            //If the new is before the currently scheduled action we need to cancel the current
-            //and schedule the new
-            if (scheduled != null && action.getTime().before(scheduled.getTime())) {
-                LogHelper.i(TAG, "Evicting currently scheduled task");
-                mixer.pushAction(scheduled.getAction());
-                timer.cancel();
-                scheduled = null;
-            }
-            //If the scheduled action happened before now it should already have fired
-            if (scheduled == null || scheduled.getTime().before(now)) {
-                LogHelper.i(TAG, "Scheduling ", action, " for execution at ", action.getTime());
-                scheduled = new ActionTask(action, this, mixer, this, atLock);
-                timer.schedule(scheduled, new Date(action.getTime().inMillis()));
-                return true;
-            }
-        } finally {
-            actionLock.unlock();
-        }
-        return false;
-    }
-
     public void setVolume(float gain1, float gain2) {
         at.setStereoVolume(gain1, gain2);
-    }
-
-    private static class ActionTask extends TimerTask {
-        private TimedAction action;
-        private AudioSink sink;
-        private LocalAudioMixer.NewActionListener listener;
-        private Lock atLock;
-        private AudioMixer mixer;
-
-        public ActionTask(TimedAction action, AudioSink sink, AudioMixer mixer, LocalAudioMixer.NewActionListener listener, Lock atLock) {
-            this.action = action;
-            this.sink = sink;
-            this.mixer = mixer;
-            this.listener = listener;
-            this.atLock = atLock;
-        }
-
-        public TimedAction getAction() {
-            return action;
-        }
-
-        public Clock.Instant getTime() {
-            return action.getTime();
-        }
-
-        @Override
-        public void run() {
-            LogHelper.i(TAG, "Executing action ", action);
-
-            atLock.lock();
-            action.execute(sink, mixer);
-            atLock.unlock();
-
-            TimedAction nextAction = mixer.readAction();
-            if(nextAction != null)
-                listener.onNewAction(nextAction);
-        }
     }
 }

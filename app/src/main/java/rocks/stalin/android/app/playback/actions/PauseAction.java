@@ -1,8 +1,9 @@
 package rocks.stalin.android.app.playback.actions;
 
+import com.squareup.wire.Message;
+
 import rocks.stalin.android.app.network.Messageable;
-import rocks.stalin.android.app.playback.AudioMixer;
-import rocks.stalin.android.app.playback.AudioSink;
+import rocks.stalin.android.app.playback.ActionStrategy;
 import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.utils.time.Clock;
 
@@ -16,9 +17,8 @@ public class PauseAction extends TimedAction implements Messageable<PauseCommand
     }
 
     @Override
-    public void execute(AudioSink at, AudioMixer mixer) {
-        at.stop();
-        mixer.flush();
+    public void execute(ActionStrategy backend) {
+        backend.pause();
     }
 
     @Override
@@ -27,7 +27,7 @@ public class PauseAction extends TimedAction implements Messageable<PauseCommand
     }
 
     @Override
-    public PauseCommand toMessage() {
+    public Message toMessage() {
         return new PauseCommand.Builder()
                 .playtime(getTimestampMessage())
                 .build();

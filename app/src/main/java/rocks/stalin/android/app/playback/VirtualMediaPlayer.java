@@ -23,17 +23,15 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
 
     private MP3File file;
     private MP3MediaInfo mediaInfo;
-    private AudioMixer player;
-    private List<AudioMixer> slaves;
+    private List<TimedEventQueue> slaves;
     private long nextSample;
     private Clock.Instant nextFrameStart;
 
-    public VirtualMediaPlayer(MP3File file, MP3MediaInfo mediaInfo, AudioMixer player, List<AudioMixer> slaves, TaskScheduler scheduler) {
+    public VirtualMediaPlayer(MP3File file, MP3MediaInfo mediaInfo, List<TimedEventQueue> slaves, TaskScheduler scheduler) {
         this.scheduler = scheduler;
 
         this.file = file;
         this.mediaInfo = mediaInfo;
-        this.player = player;
         this.slaves = slaves;
     }
 
@@ -44,7 +42,7 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
     public long tellAt(Clock.Instant time) {
         if(nextFrameStart == null)
             return 0;
-        Clock.Duration diff = time.timeBetween(nextFrameStart);
+        Clock.Duration diff = time.sub(nextFrameStart);
         long expectedSamples = mediaInfo.bytesPlayedInTime(diff) / mediaInfo.getSampleSize();
 
         if (time.before(nextFrameStart))
@@ -85,8 +83,7 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
             if(!isRunning())
                 break;
 
-            player.pushFrame(cMI, nextFrameStart, left);
-            for (AudioMixer slave : slaves)
+            for (TimedEventQueue slave : slaves)
                 slave.pushFrame(cMI, nextFrameStart, right);
             nextSample = file.tell();
             nextFrameStart = nextFrameStart.add(mediaInfo.timeToPlayBytes(read.limit()));
@@ -95,8 +92,10 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
 
     @Override
     public void start() {
-        long period = mediaInfo.timeToPlayBytes(mediaInfo.frameSize).inMillis();
-        taskHandle = scheduler.submitWithFixedRate(this, period, TimeUnit.MILLISECONDS);
+        //This may drift over time, but since we are mostly playing short tracks
+        //it might be ok? -JJ 10/05-2017
+        long period = mediaInfo.timeToPlayBytes(mediaInfo.frameSize).inNanos();
+        taskHandle = scheduler.submitWithFixedRate(this, period, TimeUnit.NANOSECONDS);
         running = true;
     }
 
@@ -116,5 +115,10 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
     @Override
     public boolean isLongRunning() {
         return true;
+    }
+
+    public void release() {
+        if(isRunning())
+            stop();
     }
 }

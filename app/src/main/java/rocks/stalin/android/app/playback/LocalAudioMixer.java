@@ -23,18 +23,10 @@ public class LocalAudioMixer implements AudioMixer {
     private int lastReadEnd;
     private int lastWriteEnd;
     private Clock.Instant bufferStart;
-    private PriorityQueue<TimedAction> actions;
-
-    private NewActionListener newActionListener;
 
     private MP3MediaInfo bufferMediaInfo;
 
     public LocalAudioMixer() {
-        actions = new PriorityQueue<>();
-    }
-
-    public void setNewActionListener(NewActionListener listener) {
-        newActionListener = listener;
     }
 
     @Override
@@ -107,17 +99,6 @@ public class LocalAudioMixer implements AudioMixer {
         }
     }
 
-    @Override
-    public void pushAction(TimedAction action) {
-        LogHelper.i(MACH_TAG, "Action:", action, "@", action.getTime());
-        if(!newActionListener.onNewAction(action))
-            actions.add(action);
-    }
-
-    public TimedAction readAction() {
-        return actions.poll();
-    }
-
     public ByteBuffer readFor(MP3MediaInfo mediaInfo, Clock.Instant time, int samples) {
         int missingBytes = samples * mediaInfo.getSampleSize();
         LogHelper.i(TAG, "Reading ", missingBytes, " bytes from the timed buffer");
@@ -174,10 +155,6 @@ public class LocalAudioMixer implements AudioMixer {
         } finally {
             bufferLock.unlock();
         }
-    }
-
-    public interface NewActionListener {
-        boolean onNewAction(TimedAction action);
     }
 }
 

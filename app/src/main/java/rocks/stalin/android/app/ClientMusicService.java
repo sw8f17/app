@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutionException;
 import rocks.stalin.android.app.decoding.MP3Encoding;
 import rocks.stalin.android.app.decoding.MP3MediaInfo;
 import rocks.stalin.android.app.framework.concurrent.ServiceLocator;
+import rocks.stalin.android.app.framework.concurrent.TaskScheduler;
 import rocks.stalin.android.app.framework.concurrent.observable.ObservableFuture;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.framework.functional.Consumer;
@@ -23,6 +24,7 @@ import rocks.stalin.android.app.network.WifiP2PConnectionFactory;
 import rocks.stalin.android.app.network.WifiP2PManagerFacade;
 import rocks.stalin.android.app.playback.LocalAudioMixer;
 import rocks.stalin.android.app.playback.AudioSink;
+import rocks.stalin.android.app.playback.MediaPlayerBackend;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
 import rocks.stalin.android.app.playback.actions.PauseAction;
 import rocks.stalin.android.app.playback.actions.PlayAction;
@@ -48,10 +50,12 @@ public class ClientMusicService extends Service {
     public static final String CONNECT_HOST_NAME = "CONNECT_HOST_NAME";
     public static final String CONNECT_PORT_NAME = "CONNECT_PORT_NAME";
 
-    private TaskExecutor executorService;
+    private TaskExecutor executor;
+    private TaskScheduler scheduler;
 
     private LocalAudioMixer localAudioMixer;
     private AudioSink sink;
+    private MediaPlayerBackend backend;
     private OffsetSource timeService = null;
 
     private PowerManager.WakeLock wakeLock;
@@ -69,7 +73,8 @@ public class ClientMusicService extends Service {
     public void onCreate() {
         super.onCreate();
 
-        executorService = ServiceLocator.getInstance().getService(TaskExecutor.class);
+        executor = ServiceLocator.getInstance().getService(TaskExecutor.class);
+        executor = ServiceLocator.getInstance().getService(TaskScheduler.class);
 
         WifiP2pManager rawManager = getSystemService(WifiP2pManager.class);
         WifiP2pManager.Channel channel = rawManager.initialize(this, getMainLooper(), null);
@@ -77,6 +82,7 @@ public class ClientMusicService extends Service {
 
         localAudioMixer = new LocalAudioMixer();
         sink = new AudioSink(localAudioMixer);
+        backend = new MediaPlayerBackend(localAudioMixer, sink, scheduler);
         //Debug.startMethodTracing("trce");
 
         PowerManager pm = getSystemService(PowerManager.class);
@@ -95,7 +101,7 @@ public class ClientMusicService extends Service {
             String hostname = intent.getStringExtra(CONNECT_HOST_NAME);
             int port = intent.getIntExtra(CONNECT_PORT_NAME, -1);
 
-            WifiP2PConnectionFactory connectionFactory = new WifiP2PConnectionFactory(this, manager, executorService);
+            WifiP2PConnectionFactory connectionFactory = new WifiP2PConnectionFactory(this, manager, executor);
             ObservableFuture<MessageConnection> connectionFuture = connectionFactory.connect(hostname, port);
             connectionFuture.setListener(new Consumer<MessageConnection>(){
 
@@ -126,7 +132,7 @@ public class ClientMusicService extends Service {
                                 time = correctedTime;
                             }
                             PlayAction action = new PlayAction(time);
-                            localAudioMixer.pushAction(action);
+                            backend.pushAction(action);
                         }
                     });
                     connection.addHandler(PauseCommand.class, new MessageConnection.MessageListener<PauseCommand, PauseCommand.Builder>() {
@@ -137,7 +143,7 @@ public class ClientMusicService extends Service {
                                 time = time.sub(timeService.getOffset());
                             }
                             PauseAction action = new PauseAction(time);
-                            localAudioMixer.pushAction(action);
+                            backend.pushAction(action);
                         }
                     });
                     connection.addHandler(SongChangeCommand.class, new MessageConnection.MessageListener<SongChangeCommand, SongChangeCommand.Builder>() {
@@ -154,7 +160,7 @@ public class ClientMusicService extends Service {
                             mediaInfo = new MP3MediaInfo(newInfo.samplerate, newInfo.channels, newInfo.framesize, encoding);
 
                             MediaChangeAction action = new MediaChangeAction(time, mediaInfo);
-                            localAudioMixer.pushAction(action);
+                            backend.pushAction(action);
                         }
                     });
                     connection.addHandler(Music.class, new MessageConnection.MessageListener<Music, Music.Builder>() {
@@ -166,7 +172,7 @@ public class ClientMusicService extends Service {
                                 LogHelper.i(TAG, "Corrected time ", playTime, " by ", timeService.getOffset(), " to ", correctedPlayTime);
                                 playTime = correctedPlayTime;
                             }
-                            localAudioMixer.pushFrame(mediaInfo, playTime, message.data.asByteBuffer());
+                            backend.pushFrame(mediaInfo, playTime, message.data.asByteBuffer());
                         }
                     });
                 }

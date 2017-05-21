@@ -37,6 +37,8 @@ public interface MediaPlayer {
     void setOnErrorListener(OnErrorListener localPlayback);
     void setOnSeekCompleteListener(OnSeekCompleteListener localPlayback);
 
+    void connectBackend(TimedEventQueue remoteBackend);
+
     interface OnCompletionListener {
         void onCompletion(MediaPlayer player);
     }

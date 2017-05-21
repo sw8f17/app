@@ -46,6 +46,11 @@ public class SimpleTaskScheduler implements TaskScheduler {
     }
 
     @Override
+    public ScheduledFuture<?> schedule(Runnable scheduled, long delay, TimeUnit unit) {
+        return executor.schedule(scheduled, delay, unit);
+    }
+
+    @Override
     public ScheduledFuture<?> submitWithFixedRate(Runnable runnable, long time, TimeUnit unit) {
         return executor.scheduleAtFixedRate(runnable, 0, time, unit);
     }
