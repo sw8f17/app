@@ -5,6 +5,8 @@ import android.support.v7.view.menu.MenuItemImpl;
 
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import rocks.stalin.android.app.framework.SimpleMath;
+
 /**
  * Created by delusional on 5/4/17.
  */
@@ -133,7 +135,7 @@ public class Clock {
         }
     }
 
-    public static class Duration {
+    public static class Duration implements SimpleMath<Duration>{
         private long millis;
         private int nanos;
 
@@ -180,6 +182,7 @@ public class Clock {
             return roundedMillis;
         }
 
+        @Override
         public Duration add(Duration operand) {
             int newNanos = this.nanos + operand.nanos;
             long newMillis = this.millis + operand.millis;
@@ -196,6 +199,19 @@ public class Clock {
             return new Duration(newMillis, newNanos);
         }
 
+        @Override
+        public Duration sub(Duration operand) {
+            long newNanos = nanos - operand.getNanos();
+            long newMillis = millis - operand.getMillis();
+            if(newNanos < 0) {
+                newMillis -= 1;
+                newNanos = NANO_TO_MILLIS + newNanos;
+            }
+            newMillis += newNanos / NANO_TO_MILLIS;
+            newNanos %= NANO_TO_MILLIS;
+            return new Duration(newMillis, (int) newNanos);
+        }
+
         public long inNanos() {
             return millis * NANO_TO_MILLIS + nanos;
         }
@@ -208,6 +224,7 @@ public class Clock {
             return nanos;
         }
 
+        @Override
         public Duration multiply(int times) {
             long newNanos = nanos * times;
             long newMillis = millis * times + (newNanos / NANO_TO_MILLIS);
@@ -215,6 +232,7 @@ public class Clock {
             return new Duration(newMillis, (int) newNanos);
         }
 
+        @Override
         public Duration divide(int denominator) {
             long newMillis = this.millis / denominator;
 

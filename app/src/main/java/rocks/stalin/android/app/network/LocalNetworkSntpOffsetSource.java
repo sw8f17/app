@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import rocks.stalin.android.app.AverageWindow;
 import rocks.stalin.android.app.framework.concurrent.TaskScheduler;
 import rocks.stalin.android.app.proto.SntpRequest;
 import rocks.stalin.android.app.proto.SntpResponse;
@@ -13,12 +14,14 @@ import rocks.stalin.android.app.utils.time.Clock;
 
 public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
     private static final String TAG = LogHelper.makeLogTag(LocalNetworkSntpOffsetSource.class);
+    private static final int AVERAGE_SIZE = 5;
 
     private MessageConnection connection;
     private TaskScheduler scheduler;
     private ScheduledFuture<?> future;
 
     private Clock.Duration latestOffset = new Clock.Duration(0L, 0);
+    private AverageWindow<Clock.Duration> window;
     private boolean isBefore;
 
     private boolean running = false;
@@ -26,11 +29,13 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
     public LocalNetworkSntpOffsetSource(MessageConnection connection, TaskScheduler scheduler) {
         this.connection = connection;
         this.scheduler = scheduler;
+
+        window = new AverageWindow<>(Clock.Duration.class, new Clock.Duration(0, 0), 5);
     }
 
     @Override
     public Clock.Duration getOffset() {
-        return latestOffset;
+        return window.getAverage();
     }
 
     private void refreshOffset() {
@@ -84,7 +89,9 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
                     Clock.Duration responseOffset = T2.sub(T3);
                     Clock.Duration sum = requestOffset.add(responseOffset);
                     latestOffset = sum.divide(2);
+                    window.putValue(latestOffset);
                     LogHelper.i(TAG, "Time correction: ", latestOffset);
+                    LogHelper.i(TAG, "Average time correction: ", window.getAverage());
                 } catch (Exception e) {
                     e.printStackTrace();
                     LogHelper.e(TAG, "T0: ", T0, " T1: ", T1);
