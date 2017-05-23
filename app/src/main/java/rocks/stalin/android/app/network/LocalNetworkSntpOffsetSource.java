@@ -22,7 +22,6 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
 
     private Clock.Duration latestOffset = new Clock.Duration(0L, 0);
     private AverageWindow<Clock.Duration> window;
-    private boolean isBefore;
 
     private boolean running = false;
 
