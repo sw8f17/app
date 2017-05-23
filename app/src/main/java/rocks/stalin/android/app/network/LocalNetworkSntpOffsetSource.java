@@ -71,13 +71,9 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
                 Clock.Instant T1 = new Clock.Instant(message.requestReceived.millis, message.requestReceived.nanos);
                 Clock.Instant T0 = new Clock.Instant(message.requestSent.millis, message.requestSent.nanos);
 
-                LogHelper.i(TAG, "Simple calc: ", ((message.requestReceived.millis - message.requestSent.millis) + (message.responseSent.millis - T3.getMillis()))/ 2);
-
                 // Sanity check, throw error if the clocks resync in an unfortunate manner while we sync
                 if(T0.sub(T3).shorterThan(T1.sub(T2))) {
                     LogHelper.w(TAG, "Bad sync timestamps");
-                    LogHelper.w(TAG, "T03: ", T0.sub(T3));
-                    LogHelper.w(TAG, "T12: ", T1.sub(T2));
                     return;
                 }
 
@@ -88,19 +84,17 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
                     Clock.Duration sum = requestOffset.add(responseOffset);
                     Clock.Duration latestOffset = sum.divide(2);
                     window.putValue(latestOffset);
-                    LogHelper.i(TAG, "Time correction: ", latestOffset);
-                    LogHelper.i(TAG, "Average time correction: ", window.getAverage());
+                    LogHelper.d(TAG, "Time correction: ", latestOffset);
+                    LogHelper.d(TAG, "Average time correction: ", window.getAverage());
                 } catch (Exception e) {
                     e.printStackTrace();
-                    LogHelper.e(TAG, "T0: ", T0, " T1: ", T1);
-                    LogHelper.e(TAG, "T2: ", T2, " T3: ", T3);
                     throw e;
                 }
             }
         });
 
         future = scheduler.submitWithFixedRate(this, 5, TimeUnit.SECONDS);
-        LogHelper.i(TAG, "started.");
+        LogHelper.i(TAG, "Started time synchronization");
 
         running = true;
     }
