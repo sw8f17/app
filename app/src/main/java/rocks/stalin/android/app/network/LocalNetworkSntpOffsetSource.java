@@ -30,7 +30,7 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
         this.connection = connection;
         this.scheduler = scheduler;
 
-        window = new AverageWindow<>(Clock.Duration.class, new Clock.Duration(0, 0), 5);
+        window = new AverageWindow<>(new Clock.Duration(0, 0), AVERAGE_SIZE);
     }
 
     @Override

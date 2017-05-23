@@ -15,7 +15,7 @@ public class AverageWindow<T extends SimpleMath<T>> {
     //Should be == size at all times except while "warming up"
     private int currentCount;
 
-    public AverageWindow(Class<T> clazz, T initialValue, int size) {
+    public AverageWindow(T initialValue, int size) {
         this.values = new LinkedBlockingQueue<>(size);
         this.size = size;
         this.currentCount = 0;
