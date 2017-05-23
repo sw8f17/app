@@ -20,7 +20,6 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
     private TaskScheduler scheduler;
     private ScheduledFuture<?> future;
 
-    private Clock.Duration latestOffset = new Clock.Duration(0L, 0);
     private AverageWindow<Clock.Duration> window;
 
     private boolean running = false;
@@ -87,7 +86,7 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
                     Clock.Duration requestOffset = T1.sub(T0);
                     Clock.Duration responseOffset = T2.sub(T3);
                     Clock.Duration sum = requestOffset.add(responseOffset);
-                    latestOffset = sum.divide(2);
+                    Clock.Duration latestOffset = sum.divide(2);
                     window.putValue(latestOffset);
                     LogHelper.i(TAG, "Time correction: ", latestOffset);
                     LogHelper.i(TAG, "Average time correction: ", window.getAverage());
