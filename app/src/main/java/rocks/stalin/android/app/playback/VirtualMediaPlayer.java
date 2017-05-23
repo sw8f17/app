@@ -2,6 +2,7 @@ package rocks.stalin.android.app.playback;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -53,40 +54,45 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
 
     @Override
     public void run() {
-        LogHelper.i(TAG, "Feeding the audio player");
+        try {
+            LogHelper.i(TAG, "Feeding the audio player");
 
-        Clock.Instant now = Clock.getTime();
+            Clock.Instant now = Clock.getTime();
 
-        Clock.Duration frameTime = mediaInfo.timeToPlayBytes(mediaInfo.frameSize);
-        Clock.Duration preloadBufferSize = frameTime.multiply(PRELOAD_SIZE);
-        Clock.Instant bufferEnd = now.add(preloadBufferSize);
+            Clock.Duration frameTime = mediaInfo.timeToPlayBytes(mediaInfo.frameSize);
+            Clock.Duration preloadBufferSize = frameTime.multiply(PRELOAD_SIZE);
+            Clock.Instant bufferEnd = now.add(preloadBufferSize);
 
-        while (nextFrameStart.before(bufferEnd)) {
-            LogHelper.i(TAG, "Inserting frame into the buffer for playback at ", nextFrameStart);
-            ByteBuffer read = file.decodeFrame();
-            ByteBuffer left = ByteBuffer.allocate(read.limit()/mediaInfo.channels);
-            ByteBuffer right = ByteBuffer.allocate(read.limit()/mediaInfo.channels);
+            while (nextFrameStart.before(bufferEnd)) {
+                LogHelper.i(TAG, "Inserting frame into the buffer for playback at ", nextFrameStart);
+                ByteBuffer read = file.decodeFrame();
+                ByteBuffer left = ByteBuffer.allocate(read.limit() / mediaInfo.channels);
+                ByteBuffer right = ByteBuffer.allocate(read.limit() / mediaInfo.channels);
 
-            MP3MediaInfo cMI = new MP3MediaInfo(mediaInfo.sampleRate, 1, mediaInfo.frameSize / mediaInfo.channels, mediaInfo.encoding);
+                MP3MediaInfo cMI = new MP3MediaInfo(mediaInfo.sampleRate, 1, mediaInfo.frameSize / mediaInfo.channels, mediaInfo.encoding);
 
-            for(int i = read.position(); i < read.limit(); i += mediaInfo.getSampleSize()) {
-                for(int j = 0; j < mediaInfo.encoding.getSampleSize(); j++)
-                    left.put(read.get());
-                for(int j = 0; j < mediaInfo.encoding.getSampleSize(); j++)
-                    right.put(read.get());
+                for (int i = read.position(); i < read.limit(); i += mediaInfo.getSampleSize()) {
+                    for (int j = 0; j < mediaInfo.encoding.getSampleSize(); j++)
+                        left.put(read.get());
+                    for (int j = 0; j < mediaInfo.encoding.getSampleSize(); j++)
+                        right.put(read.get());
+                }
+
+                left.flip();
+                right.flip();
+
+                //Make sure we are still supposed to be running before pushing the decoded frame
+                if (!isRunning())
+                    break;
+
+                for (TimedEventQueue slave : slaves)
+                    slave.pushFrame(cMI, nextFrameStart, right.duplicate());
+                nextSample = file.tell();
+                nextFrameStart = nextFrameStart.add(mediaInfo.timeToPlayBytes(read.limit()));
             }
-
-            left.flip();
-            right.flip();
-
-            //Make sure we are still supposed to be running before pushing the decoded frame
-            if(!isRunning())
-                break;
-
-            for (TimedEventQueue slave : slaves)
-                slave.pushFrame(cMI, nextFrameStart, right.duplicate());
-            nextSample = file.tell();
-            nextFrameStart = nextFrameStart.add(mediaInfo.timeToPlayBytes(read.limit()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
         }
     }
 

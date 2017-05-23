@@ -42,6 +42,22 @@ public class LocalAudioMixer implements AudioMixer {
         }
     }
 
+    /**
+     * Redate the buffer after writing the first frame.
+     *
+     * <p>
+     *     This is useful after preloading data into the mixer, and then setting the start time.
+     *     Especially if a clock sync happens after the preload but before the play.
+     * </p>
+     * @param time The new time to set at the beginning of playback
+     */
+    @Override
+    public void setStartTime(Clock.Instant time) {
+        LogHelper.i(TAG, "Backdating the buffer to ", time);
+        if(bufferStart != null)
+            bufferStart = time;
+    }
+
     @Override
     public void pushFrame(MP3MediaInfo mediaInfo, Clock.Instant timeToPlay, ByteBuffer soundData) {
         LogHelper.i(MACH_TAG, "Frame:", timeToPlay, "@", mediaInfo.timeToPlayBytes(soundData.capacity()));
@@ -58,8 +74,9 @@ public class LocalAudioMixer implements AudioMixer {
 
             bufferStart = bufferStart.add(playTimeInto);
 
-            if(timeToPlay.before(bufferStart))
-                throw new IllegalArgumentException("We can't mix in a frame earlier than the start of the mixer buffer");
+            if(timeToPlay.before(bufferStart)) {
+                LogHelper.w(TAG, "You can't write before the start of the buffer, You probably had a time resync");
+            }
 
             //Compact the buffer, copying all the remaining data to the start of the buffer
             //also sets the position to the end of the limit to make us ready for the next write
@@ -75,7 +92,7 @@ public class LocalAudioMixer implements AudioMixer {
             }
 
             if(lastWriteEnd != offset) {
-                if(Math.abs(offset - lastWriteEnd) < 1000)
+                if(Math.abs(offset - lastWriteEnd) < 100)
                     offset = lastWriteEnd;
                 else
                     LogHelper.w(TAG, "Bad offset, we are wrong by ", offset - nativeBuffer.position());
@@ -130,14 +147,30 @@ public class LocalAudioMixer implements AudioMixer {
 
         bufferLock.lock();
         try{
-            nativeBuffer.position(offset);
-            LogHelper.i(TAG, "Getting ", missingBytes, " from ", nativeBuffer.limit() - nativeBuffer.position());
-            if(offset + missingBytes > nativeBuffer.limit())
-                throw new IllegalStateException("Buffer overrun, wanted " + (offset + missingBytes) + ", Had: " + nativeBuffer.limit());
-            ByteBuffer dupBuffer = nativeBuffer.duplicate();
-            dupBuffer.limit(offset + missingBytes);
-            mixedBuffer.put(dupBuffer);
-            lastReadEnd = dupBuffer.position();
+            if(offset < 0) {
+                int skipBytes = -offset;
+                LogHelper.w(TAG, "underflowing ", skipBytes, " bytes off the start");
+                mixedBuffer.position(skipBytes);
+                missingBytes -= skipBytes;
+                offset = 0;
+            }
+            if(offset <= nativeBuffer.limit()) {
+                nativeBuffer.position(offset);
+                LogHelper.i(TAG, "Getting ", missingBytes, " from ", nativeBuffer.limit() - nativeBuffer.position());
+                ByteBuffer dupBuffer = nativeBuffer.duplicate();
+                dupBuffer.limit(offset + missingBytes);
+                mixedBuffer.put(dupBuffer);
+                if(offset + missingBytes > nativeBuffer.limit()) {
+                    LogHelper.w(TAG, "underflowing ", (offset + missingBytes) - nativeBuffer.limit(), " bytes off the end");
+                    mixedBuffer.position(mixedBuffer.capacity());
+                }
+                lastReadEnd = dupBuffer.position();
+            } else {
+                LogHelper.w(TAG, "The requested music is after at ", offset, " we only have data to ", mixedBuffer.limit());
+                mixedBuffer.position(mixedBuffer.capacity());
+                nativeBuffer.position(nativeBuffer.limit());
+                lastReadEnd += missingBytes;
+            }
         } finally {
             bufferLock.unlock();
         }

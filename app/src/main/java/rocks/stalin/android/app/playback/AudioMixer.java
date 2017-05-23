@@ -15,4 +15,6 @@ public interface AudioMixer {
 
     void flush();
     void change(MP3MediaInfo mediaInfo);
+
+    void setStartTime(Clock.Instant time);
 }

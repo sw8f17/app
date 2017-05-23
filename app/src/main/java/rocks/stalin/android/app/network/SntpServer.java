@@ -24,6 +24,8 @@ public class SntpServer {
                         .nanos(receivedTime.getNanos())
                         .build();
 
+                connection.prepareSend();
+
                 Clock.Instant sentTime = Clock.getTime();
                 Timestamp responseSentAt = new Timestamp.Builder()
                         .millis(sentTime.getMillis())
@@ -35,7 +37,6 @@ public class SntpServer {
                         .responseSent(responseSentAt)
                         .requestSent(message.requestSent)
                         .build();
-
                 try {
                     connection.send(response, SntpResponse.class);
                 } catch (IOException e) {

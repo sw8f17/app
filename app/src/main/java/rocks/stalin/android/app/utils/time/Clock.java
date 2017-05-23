@@ -144,9 +144,9 @@ public class Clock {
             if(nanos / NANO_TO_MILLIS != 0)
                 throw new IllegalArgumentException("Durations have to be normalized");
             if(millis > 0 && nanos < 0)
-                throw new IllegalArgumentException("Inconsistent signs");
+                throw new IllegalArgumentException("Inconsistent signs: " + millis + ", " + nanos);
             if(millis < 0 && nanos > 0)
-                throw new IllegalArgumentException("Inconsistent signs");
+                throw new IllegalArgumentException("Inconsistent signs: " + millis + ", " + nanos);
 
             this.nanos = nanos;
         }
@@ -199,17 +199,13 @@ public class Clock {
             return new Duration(newMillis, newNanos);
         }
 
+        public Duration negate() {
+            return new Duration(-millis, -nanos);
+        }
+
         @Override
         public Duration sub(Duration operand) {
-            long newNanos = nanos - operand.getNanos();
-            long newMillis = millis - operand.getMillis();
-            if(newNanos < 0) {
-                newMillis -= 1;
-                newNanos = NANO_TO_MILLIS + newNanos;
-            }
-            newMillis += newNanos / NANO_TO_MILLIS;
-            newNanos %= NANO_TO_MILLIS;
-            return new Duration(newMillis, (int) newNanos);
+            return add(operand.negate());
         }
 
         public long inNanos() {

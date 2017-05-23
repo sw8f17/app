@@ -96,7 +96,7 @@ public class MediaPlayerBackend implements ActionStrategy, TimedEventQueue {
         mixer.change(mediaInfo);
     }
 
-    public void finalizeAction() {
+    private void finalizeAction() {
         TimedAction nextAction = actions.poll();
         if(nextAction != null)
             pushAction(nextAction);

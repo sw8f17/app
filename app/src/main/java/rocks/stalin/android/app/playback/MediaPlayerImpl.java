@@ -198,7 +198,8 @@ public class MediaPlayerImpl implements MediaPlayer {
         backend.release();
         decoder.exit();
 
-        feeder.release();
+        if(feeder != null)
+            feeder.release();
 
         if(wakeLock != null && wakeLock.isHeld())
             wakeLock.release();

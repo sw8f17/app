@@ -381,9 +381,9 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
     @Override
     public void onNewConnection(MessageConnection connection) {
-        remotePlayback.addClient(connection);
         SntpServer sntpServer = new SntpServer();
         sntpServer.register(connection);
+        remotePlayback.addClient(connection);
     }
 
     /**

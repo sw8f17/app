@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import rocks.stalin.android.app.framework.Lifecycle;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
@@ -36,6 +38,7 @@ public class MessageConnection implements Lifecycle, TimeAwareRunnable {
     private boolean running;
 
     private SparseArray<MessageListener> handlers = new SparseArray<>();
+    private ReentrantLock connectionLock = new ReentrantLock();
 
     public MessageConnection(Socket socket, TaskExecutor executorService) {
         this.socket = socket;
@@ -155,12 +158,22 @@ public class MessageConnection implements Lifecycle, TimeAwareRunnable {
         handler.packetReceived(message);
     }
 
+    public void prepareSend() {
+        connectionLock.lock();
+    }
+
     public <M extends Message<M, B>, B extends Message.Builder<M, B>> void send(M packet, Class<? extends M> clazz) throws IOException {
-        byte[] packetData = packet.adapter().encode(packet);
-        dos.writeByte(MessageRegistry.getInstance().getID(clazz));
-        dos.writeInt(packetData.length);
-        dos.write(packetData);
-        dos.flush();
+        if(!connectionLock.isHeldByCurrentThread())
+            connectionLock.lock();
+        try {
+            byte[] packetData = packet.adapter().encode(packet);
+            dos.writeByte(MessageRegistry.getInstance().getID(clazz));
+            dos.writeInt(packetData.length);
+            dos.write(packetData);
+            dos.flush();
+        }finally {
+            connectionLock.unlock();
+        }
     }
 
     @Override

@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -47,62 +48,67 @@ public class AudioSink {
         audioThread = new Thread() {
             @Override
             public void run() {
-                while(true) {
-                    int written;
-                    ByteBuffer buffer;
-                    try {
-                        audioWriteLock.acquire();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-
-                    try {
-                        atLock.lockInterruptibly();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-
-                    if(at.getPlayState() != AudioTrack.PLAYSTATE_PLAYING &&
-                            at.getPlayState() != AudioTrack.PLAYSTATE_PAUSED) {
-                        continue;
-                    }
-
-                    try {
-                        AudioTimestamp timestamp = new AudioTimestamp();
-                        Clock.Instant now;
-                        long playbackPosition;
-                        if (at.getTimestamp(timestamp)) {
-                            now = Clock.fromNanos(timestamp.nanoTime);
-                            playbackPosition = timestamp.framePosition;
-                        } else {
-                            now = Clock.getTime();
-                            playbackPosition = at.getPlaybackHeadPosition();
+                try {
+                    while (true) {
+                        int written;
+                        ByteBuffer buffer;
+                        try {
+                            audioWriteLock.acquire();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
                         }
 
-                        LogHelper.i("VIZ-ROBOT", "PlayHead:", now);
+                        try {
+                            atLock.lockInterruptibly();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                        try {
 
-                        int space = (int) ((at.getPlaybackHeadPosition() + at.getBufferSizeInFrames()) - bufferStart);
+                            if (at.getPlayState() != AudioTrack.PLAYSTATE_PLAYING &&
+                                    at.getPlayState() != AudioTrack.PLAYSTATE_PAUSED) {
+                                continue;
+                            }
 
-                        Clock.Duration expectedEnd = mediaInfo.timeToPlayBytes((bufferStart - playbackPosition) * mediaInfo.getSampleSize());
+                            AudioTimestamp timestamp = new AudioTimestamp();
+                            Clock.Instant now;
+                            long playbackPosition;
+                            if (at.getTimestamp(timestamp)) {
+                                now = Clock.fromNanos(timestamp.nanoTime);
+                                playbackPosition = timestamp.framePosition;
+                            } else {
+                                now = Clock.getTime();
+                                playbackPosition = at.getPlaybackHeadPosition();
+                            }
 
-                        LogHelper.i(TAG, "At ", now, ", I'm expecting to run out of data in ", expectedEnd, ", or at ", now.add(expectedEnd));
-                        LogHelper.i(TAG, "I presented ", timestamp.framePosition, " at ", now, " but i'm actually at ", at.getPlaybackHeadPosition());
+                            LogHelper.i("VIZ-ROBOT", "PlayHead:", now);
 
-                        buffer = AudioSink.this.mixer.readFor(mediaInfo, now.add(expectedEnd), space);
+                            int space = (int) ((at.getPlaybackHeadPosition() + at.getBufferSizeInFrames()) - bufferStart);
 
-                        written = at.write(buffer, buffer.limit(), AudioTrack.WRITE_NON_BLOCKING);
-                    } finally {
-                        atLock.unlock();
+                            Clock.Duration expectedEnd = mediaInfo.timeToPlayBytes((bufferStart - playbackPosition) * mediaInfo.getSampleSize());
+
+                            LogHelper.i(TAG, "At ", now, ", I'm expecting to run out of data in ", expectedEnd, ", or at ", now.add(expectedEnd));
+                            LogHelper.i(TAG, "I presented ", timestamp.framePosition, " at ", now, " but i'm actually at ", at.getPlaybackHeadPosition());
+
+                            buffer = AudioSink.this.mixer.readFor(mediaInfo, now.add(expectedEnd), space);
+
+                            written = at.write(buffer, buffer.limit(), AudioTrack.WRITE_NON_BLOCKING);
+                        } finally {
+                            atLock.unlock();
+                        }
+
+                        //This sometimes happens when we pause after while it's running.
+                        //Not a huge issue, but we should find some way fo fixing it -JJ 10/05-2017
+                        if (written != buffer.limit()) {
+                            LogHelper.e(TAG, "Buffer overflow!");
+                        }
+                        bufferStart += written / mediaInfo.getSampleSize();
                     }
-
-                    //This sometimes happens when we pause after while it's running.
-                    //Not a huge issue, but we should find some way fo fixing it -JJ 10/05-2017
-                    if (written != buffer.limit()) {
-                        LogHelper.e(TAG, "Buffer overflow!");
-                    }
-                    bufferStart += written / mediaInfo.getSampleSize();
+                } catch (Exception e) {
+                    LogHelper.e(TAG, "Exception in audiothread");
+                    e.printStackTrace();
                 }
             }
         };
