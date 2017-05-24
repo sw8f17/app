@@ -1,7 +1,9 @@
 package rocks.stalin.android.app.network;
 
+import java.net.SocketAddress;
+
 import rocks.stalin.android.app.framework.concurrent.observable.ObservableFuture;
 
 public interface OffsetSourceFactory {
-    ObservableFuture<? extends OffsetSource> create(final MessageConnection connection);
+    ObservableFuture<LocalNetworkSntpOffsetSource> create(String localHost, int localPort, String remoteHost, int remotePort);
 }

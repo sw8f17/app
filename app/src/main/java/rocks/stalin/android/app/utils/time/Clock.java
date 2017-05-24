@@ -52,7 +52,7 @@ public class Clock {
 
         public Instant(long millis, int nanos) {
             if(millis < 0 || nanos < 0)
-                throw new IllegalArgumentException("How do you expect me to deal with negative instants");
+                throw new IllegalArgumentException("How do you expect me to deal with negative instants: " + millis + ", " + nanos);
             this.millis = millis;
             if(nanos >= NANO_TO_MILLIS)
                 throw new IllegalArgumentException("The nanos given was greater than one millisecond: " +  nanos);

@@ -39,6 +39,7 @@ import com.google.android.gms.cast.framework.SessionManager;
 import com.google.android.gms.cast.framework.SessionManagerListener;
 
 import java.lang.ref.WeakReference;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -143,6 +144,7 @@ public class MusicService extends MediaBrowserServiceCompat implements
     private SessionManagerListener<CastSession> mCastSessionManagerListener;
 
     private RemotePlayback remotePlayback;
+    private SntpServer sntpServer;
 
     private OffsetSource timeProvider;
     private WifiP2pServiceAnnouncer server;
@@ -199,10 +201,12 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
         LogHelper.i(TAG, "Starting manager");
 
+        sntpServer = new SntpServer(new InetSocketAddress("0.0.0.0", 8011), executorService);
+        sntpServer.start();
         //TODO: extract port number somewhere else, possible even not set it
         TCPServerConnectionFactory connectionFactory = new TCPServerConnectionFactory(8009, executorService);
         connectionFactory.setListener(this);
-        executorService.submit(connectionFactory);
+        connectionFactory.start();
 
         WifiP2pManager rawManager = getSystemService(WifiP2pManager.class);
         WifiP2pManager.Channel channel = rawManager.initialize(this, getMainLooper(), null);
@@ -381,8 +385,6 @@ public class MusicService extends MediaBrowserServiceCompat implements
 
     @Override
     public void onNewConnection(MessageConnection connection) {
-        SntpServer sntpServer = new SntpServer();
-        sntpServer.register(connection);
         remotePlayback.addClient(connection);
     }
 

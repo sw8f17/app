@@ -8,6 +8,7 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
 
+import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
 
 import rocks.stalin.android.app.decoding.MP3Encoding;
@@ -98,18 +99,20 @@ public class ClientMusicService extends Service {
             wakeLock.acquire();
             LogHelper.v(TAG, "Connecting to server");
 
-            String hostname = intent.getStringExtra(CONNECT_HOST_NAME);
+            final String hostname = intent.getStringExtra(CONNECT_HOST_NAME);
             int port = intent.getIntExtra(CONNECT_PORT_NAME, -1);
 
             WifiP2PConnectionFactory connectionFactory = new WifiP2PConnectionFactory(this, manager, executor);
             ObservableFuture<MessageConnection> connectionFuture = connectionFactory.connect(hostname, port);
             connectionFuture.setListener(new Consumer<MessageConnection>(){
+                OffsetSourceFactory offsetSourceFactory;
 
                 public void call(MessageConnection connection) {
-                    OffsetSourceFactory offsetSourceFactory = ServiceLocator.getInstance().getService(OffsetSourceFactory.class);
+                    offsetSourceFactory = ServiceLocator.getInstance().getService(OffsetSourceFactory.class);
 
                     try {
-                        timeService = offsetSourceFactory.create(connection).get();
+                        LogHelper.i(TAG, "Connecting to ", hostname);
+                        timeService = offsetSourceFactory.create("0.0.0.0",  8011,  connection.getInetAddres().getHostName(), 8011).get();
                     } catch (InterruptedException | ExecutionException e) {
                         LogHelper.e(TAG, "OffsetSource Factory failed to create" + e);
                     }

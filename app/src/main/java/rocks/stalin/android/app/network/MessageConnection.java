@@ -9,6 +9,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -179,6 +180,10 @@ public class MessageConnection implements Lifecycle, TimeAwareRunnable {
     @Override
     public boolean isLongRunning() {
         return true;
+    }
+
+    public InetAddress getInetAddres() {
+        return socket.getInetAddress();
     }
 
     public interface MessageListener<M extends Message<M, B>, B extends Message.Builder<M, B>> {
