@@ -82,7 +82,7 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
                     Clock.Duration requestOffset = T1.sub(T0);
                     Clock.Duration responseOffset = T2.sub(T3);
                     Clock.Duration sum = requestOffset.add(responseOffset);
-                    Clock.Duration latestOffset = sum.divide(2).sub(requestOffset.sub(responseOffset).divide(2));
+                    Clock.Duration latestOffset = sum.divide(2);
                     window.putValue(latestOffset);
                     LogHelper.i(TAG, "The difference between the times were, ", requestOffset.sub(responseOffset));
                     LogHelper.i(TAG, "Time correction: ", latestOffset);
