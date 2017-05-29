@@ -66,6 +66,7 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
             while (nextFrameStart.before(bufferEnd)) {
                 LogHelper.i(TAG, "Inserting frame into the buffer for playback at ", nextFrameStart);
                 ByteBuffer read = file.decodeFrame();
+                /*
                 ByteBuffer left = ByteBuffer.allocate(read.limit() / mediaInfo.channels);
                 ByteBuffer right = ByteBuffer.allocate(read.limit() / mediaInfo.channels);
 
@@ -84,9 +85,9 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
                 //Make sure we are still supposed to be running before pushing the decoded frame
                 if (!isRunning())
                     break;
-
+*/
                 for (TimedEventQueue slave : slaves)
-                    slave.pushFrame(cMI, nextFrameStart, right.duplicate());
+                    slave.pushFrame(mediaInfo, nextFrameStart, read.duplicate());
                 nextSample = file.tell();
                 nextFrameStart = nextFrameStart.add(mediaInfo.timeToPlayBytes(read.limit()));
             }

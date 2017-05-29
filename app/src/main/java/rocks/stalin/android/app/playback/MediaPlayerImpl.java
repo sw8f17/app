@@ -97,7 +97,11 @@ public class MediaPlayerImpl implements MediaPlayer {
         mediaInfo = currentFile.getMediaInfo();
 
         Clock.Instant time = Clock.getTime();
+        /*
         MediaChangeAction action = new MediaChangeAction(time, new MP3MediaInfo(mediaInfo.sampleRate, 1, mediaInfo.frameSize/mediaInfo.channels, mediaInfo.encoding));
+        /*/
+        MediaChangeAction action = new MediaChangeAction(time, mediaInfo);
+        //*/
         for(TimedEventQueue slave : slaves)
             slave.pushAction(action);
 

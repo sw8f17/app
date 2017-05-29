@@ -14,7 +14,7 @@ import rocks.stalin.android.app.utils.time.Clock;
 
 public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
     private static final String TAG = LogHelper.makeLogTag(LocalNetworkSntpOffsetSource.class);
-    private static final int AVERAGE_SIZE = 15;
+    private static final int AVERAGE_SIZE = 10;
 
     private MessageConnection connection;
     private TaskScheduler scheduler;
@@ -82,7 +82,7 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
                     Clock.Duration requestOffset = T1.sub(T0);
                     Clock.Duration responseOffset = T2.sub(T3);
                     Clock.Duration sum = requestOffset.add(responseOffset);
-                    Clock.Duration latestOffset = sum.divide(2).sub(requestOffset.sub(responseOffset).divide(2));
+                    Clock.Duration latestOffset = sum.divide(2);
                     window.putValue(latestOffset);
                     LogHelper.i(TAG, "The difference between the times were, ", requestOffset.sub(responseOffset));
                     LogHelper.i(TAG, "Time correction: ", latestOffset);
@@ -94,7 +94,7 @@ public class LocalNetworkSntpOffsetSource implements OffsetSource, Runnable {
             }
         });
 
-        future = scheduler.submitWithFixedRate(this, 500, TimeUnit.MILLISECONDS);
+        future = scheduler.submitWithFixedRate(this, 1500, TimeUnit.MILLISECONDS);
         LogHelper.i(TAG, "Started time synchronization");
 
         running = true;
