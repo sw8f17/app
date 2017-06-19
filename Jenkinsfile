@@ -44,18 +44,18 @@ parallel (
 			}
 		}
 	},
-	"test2" : {
-		node {
-			stage('Connected Test') {
-				deleteDir()
-				unstash "sources"
-
-				gradle "cAT"
-
-				junit '**/build/outputs/androidTest-results/connected/*.xml'
-			}
-		}
-	},
+//	"test2" : {
+//		node {
+//			stage('Connected Test') {
+//				deleteDir()
+//				unstash "sources"
+//
+//				gradle "cAT"
+//
+//				junit '**/build/outputs/androidTest-results/connected/*.xml'
+//			}
+//		}
+//	},
 	"javadoc" : {
 		node {
 			stage('Javadoc') {
