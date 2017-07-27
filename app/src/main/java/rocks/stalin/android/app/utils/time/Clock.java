@@ -14,6 +14,8 @@ import rocks.stalin.android.app.framework.SimpleMath;
 public class Clock {
     public static final long NANO_TO_MILLIS = 1000000;
     public static final int MILLIS_TO_SEC = 1000;
+    public static final int MICRO_TO_MILLIS = 1000;
+    public static final int NANO_TO_MICRO = 1000;
 
     private static long lastMillis = 0;
     private static long lastNanos = 0;
@@ -60,6 +62,12 @@ public class Clock {
             this.nanos = nanos;
         }
 
+        public static Instant fromMicros(long micros) {
+            long millis = micros / MICRO_TO_MILLIS;
+            int nanos = (int)(micros % MICRO_TO_MILLIS) * NANO_TO_MICRO;
+            return new Instant(millis, nanos);
+        }
+
         /**
          * Rounds the instant to the nearest millis, 500.000 rounds up.
          * @return the instant as millis rounded.
@@ -69,6 +77,15 @@ public class Clock {
             if(nanos >= NANO_TO_MILLIS/2)
                 roundedMillis += 1;
             return roundedMillis;
+        }
+
+        public long inMicros() {
+            long roundedMicros = millis * MICRO_TO_MILLIS;
+            long microsInNanos  = nanos / NANO_TO_MILLIS;
+            roundedMicros += microsInNanos;
+            if(nanos % NANO_TO_MICRO >= NANO_TO_MICRO/2)
+                roundedMicros += 1;
+            return roundedMicros;
         }
 
         public long getMillis() {
@@ -118,6 +135,10 @@ public class Clock {
             return new Instant(newMillis, (int) newNanos);
         }
 
+        public Duration toDuration() {
+            return new Duration(millis, nanos);
+        }
+
         public boolean before(Instant o) {
             return compareTo(o) < 0;
         }
@@ -158,6 +179,12 @@ public class Clock {
 
         public static Duration fromMillis(long millis) {
             return new Duration(millis, 0);
+        }
+
+        public static Duration fromMicros(long micros) {
+            long millis = micros / MICRO_TO_MILLIS;
+            int nanos = (int)(micros % MICRO_TO_MILLIS) * NANO_TO_MICRO;
+            return new Duration(millis, nanos);
         }
 
         public static Duration FromNanos(long nanos) {

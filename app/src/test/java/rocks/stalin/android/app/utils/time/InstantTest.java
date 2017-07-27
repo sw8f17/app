@@ -6,6 +6,28 @@ import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.*;
 
 public class InstantTest {
+
+    @Test
+    public void Clock_Instant_inMicros_Easy() throws Exception {
+        Clock.Instant i = new Clock.Instant(1L, 0);
+
+        assertThat(i.inMicros(), equalTo(1000L));
+    }
+
+    @Test
+    public void Clock_Instant_inMicros_RoundUp() throws Exception {
+        Clock.Instant i = new Clock.Instant(1L, 500);
+
+        assertThat(i.inMicros(), equalTo(1001L));
+    }
+
+    @Test
+    public void Clock_Instant_inMicros_RoundDown() throws Exception {
+        Clock.Instant i = new Clock.Instant(1L, 499);
+
+        assertThat(i.inMicros(), equalTo(1000L));
+    }
+
     @Test
     public void Clock_Instant_sub_Instant_Easy() throws Exception {
         Clock.Instant i = new Clock.Instant(1L, 0);

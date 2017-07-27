@@ -2,8 +2,7 @@ package rocks.stalin.android.app.playback;
 
 import java.nio.ByteBuffer;
 
-import rocks.stalin.android.app.decoding.MP3MediaInfo;
-import rocks.stalin.android.app.playback.actions.TimedAction;
+import rocks.stalin.android.app.decoding.MediaInfo;
 import rocks.stalin.android.app.utils.time.Clock;
 
 /**
@@ -11,10 +10,10 @@ import rocks.stalin.android.app.utils.time.Clock;
  */
 
 public interface AudioMixer {
-    void pushFrame(MP3MediaInfo mediaInfo, Clock.Instant nextTime, ByteBuffer read);
+    void pushFrame(MediaInfo mediaInfo, Clock.Instant nextTime, ByteBuffer read);
 
     void flush();
-    void change(MP3MediaInfo mediaInfo);
+    void change(MediaInfo mediaInfo);
 
     void setStartTime(Clock.Instant time);
 }

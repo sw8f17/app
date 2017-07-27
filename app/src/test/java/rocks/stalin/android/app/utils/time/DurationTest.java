@@ -10,6 +10,30 @@ import static org.junit.Assert.*;
  * Created by delusional on 5/4/17.
  */
 public class DurationTest {
+
+    @Test
+    public void Duration_Instant_fromMicros_Easy() throws Exception {
+        Clock.Duration time = Clock.Duration.fromMicros(0);
+
+        assertThat(time.inMillis(), equalTo(0L));
+        assertThat(time.getNanos(), equalTo(0));
+    }
+
+    @Test
+    public void Duration_Instant_fromMicros_1Millis() throws Exception {
+        Clock.Duration time = Clock.Duration.fromMicros(1000);
+
+        assertThat(time.inMillis(), equalTo(1L));
+        assertThat(time.getNanos(), equalTo(0));
+    }
+
+    @Test
+    public void Duration_Instant_fromMicros_1Millis_1000Nanos() throws Exception {
+        Clock.Duration time = Clock.Duration.fromMicros(1001);
+
+        assertThat(time.inMillis(), equalTo(1L));
+        assertThat(time.getNanos(), equalTo(1000));
+    }
     @Test
     public void fromNanos_11() throws Exception {
         Clock.Duration d = Clock.Duration.FromNanos(1000001);

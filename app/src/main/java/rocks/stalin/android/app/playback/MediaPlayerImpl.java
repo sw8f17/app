@@ -7,17 +7,15 @@ import android.os.PowerManager;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import rocks.stalin.android.app.decoding.MP3Decoder;
-import rocks.stalin.android.app.decoding.MP3MediaInfo;
+import rocks.stalin.android.app.decoding.MediaInfo;
+import rocks.stalin.android.app.decoding.MediaReader;
 import rocks.stalin.android.app.framework.concurrent.TaskScheduler;
-import rocks.stalin.android.app.framework.concurrent.observable.ObservableFutureTask;
 import rocks.stalin.android.app.framework.functional.Consumer;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
 import rocks.stalin.android.app.playback.actions.PauseAction;
 import rocks.stalin.android.app.playback.actions.PlayAction;
-import rocks.stalin.android.app.playback.actions.TimedAction;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.decoding.MP3File;
 import rocks.stalin.android.app.utils.time.Clock;
@@ -31,8 +29,11 @@ public class MediaPlayerImpl implements MediaPlayer {
 
     private TaskScheduler scheduler;
 
+    private MediaReader reader;
     private MP3Decoder decoder;
     private MP3File currentFile;
+
+    private BetterAudioSink betterAudioSink;
 
     private PlaybackState state;
 
@@ -42,11 +43,10 @@ public class MediaPlayerImpl implements MediaPlayer {
     private OnSeekCompleteListener seekCompleteListener;
 
     private List<TimedEventQueue> slaves;
-    private MP3MediaInfo mediaInfo;
 
-    private VirtualMediaPlayer feeder;
+    private BetterVirtualMediaPlayer virtualMediaPlayer;
 
-    PowerManager.WakeLock wakeLock;
+    private PowerManager.WakeLock wakeLock;
 
     private int pauseSample;
 
@@ -55,13 +55,14 @@ public class MediaPlayerImpl implements MediaPlayer {
 
         this.scheduler = scheduler;
 
+        reader = new MediaReader();
+
         decoder = new MP3Decoder();
         decoder.init();
 
-
-        LocalAudioMixer mixer = new LocalAudioMixer();
-        AudioSink sink = new AudioSink(mixer);
-        backend = new MediaPlayerBackend(mixer, sink, scheduler);
+        betterAudioSink = new BetterAudioSink();
+        final LocalBufferQueue queue = new LocalBufferQueue();
+        backend = new MediaPlayerBackend(queue, betterAudioSink, scheduler);
 
         slaves = new ArrayList<>();
         slaves.add(backend);
@@ -74,15 +75,14 @@ public class MediaPlayerImpl implements MediaPlayer {
     @Override
     public void reset() {
         state = PlaybackState.Stopped;
-        if(feeder != null && feeder.isRunning()) {
-            feeder.stop();
+        if(virtualMediaPlayer != null && virtualMediaPlayer.isRunning()) {
+            virtualMediaPlayer.stop();
         }
-        feeder = null;
+        virtualMediaPlayer = null;
         if(currentFile != null) {
             currentFile.close();
             currentFile = null;
         }
-        mediaInfo = null;
 
         state = PlaybackState.Idle;
     }
@@ -93,17 +93,8 @@ public class MediaPlayerImpl implements MediaPlayer {
             throw new IllegalStateException("You can't set the datasource from " + state);
         }
 
-        currentFile = decoder.open(mContext, uriSource);
-        mediaInfo = currentFile.getMediaInfo();
-
-        Clock.Instant time = Clock.getTime();
-        /*
-        MediaChangeAction action = new MediaChangeAction(time, new MP3MediaInfo(mediaInfo.sampleRate, 1, mediaInfo.frameSize/mediaInfo.channels, mediaInfo.encoding));
-        /*/
-        MediaChangeAction action = new MediaChangeAction(time, mediaInfo);
-        //*/
-        for(TimedEventQueue slave : slaves)
-            slave.pushAction(action);
+        reader.reset();
+        reader.setDataSource(mContext, uriSource, null);
 
         state = PlaybackState.Initialized;
     }
@@ -115,28 +106,26 @@ public class MediaPlayerImpl implements MediaPlayer {
 
     @Override
     public void prepareAsync() {
-        Thread.dumpStack();
+        //Thread.dumpStack();
         if(state != PlaybackState.Initialized) {
             throw new IllegalStateException("You can't prepareAsync from " + state);
         }
 
         state = PlaybackState.Preparing;
 
-        ObservableFutureTask<Void> prepareTask = new ObservableFutureTask<>(new Callable<Void>() {
+        reader.prepare(scheduler).setListener(new Consumer<MediaInfo>() {
             @Override
-            public Void call() throws Exception {
-                feeder = new VirtualMediaPlayer(currentFile, mediaInfo, slaves, scheduler);
-                return null;
-            }
-        });
-        prepareTask.setListener(new Consumer<Void>() {
-            @Override
-            public void call(Void value) {
+            public void call(MediaInfo mediaInfo) {
+                Clock.Instant time = Clock.getTime();
+                MediaChangeAction action = new MediaChangeAction(time, mediaInfo);
+                for(TimedEventQueue slave : slaves)
+                    slave.pushAction(action);
+
+                virtualMediaPlayer = new BetterVirtualMediaPlayer(reader, mediaInfo, slaves, scheduler);
                 state = PlaybackState.Prepared;
                 preparedListener.onPrepared(MediaPlayerImpl.this);
             }
         });
-        scheduler.submit(prepareTask);
     }
 
     @Override
@@ -154,8 +143,10 @@ public class MediaPlayerImpl implements MediaPlayer {
 
         currentFile.seek(pauseSample);
 
-        feeder.setStartTime(startTime);
-        feeder.start();
+        // virtualMediaPlayer.setStartTime(startTime);
+        if(state == PlaybackState.Prepared)
+            virtualMediaPlayer.start();
+        virtualMediaPlayer.play(startTime);
 
         PlayAction action = new PlayAction(startTime);
         for(TimedEventQueue slave : slaves)
@@ -180,8 +171,8 @@ public class MediaPlayerImpl implements MediaPlayer {
         for(TimedEventQueue slave : slaves)
             slave.pushAction(action);
 
-        feeder.stop();
-        pauseSample = (int)feeder.tellAt(pauseTime);
+        virtualMediaPlayer.pause(pauseTime);
+        // pauseSample = (int)virtualMediaPlayer.tellAt(pauseTime);
 
         state = PlaybackState.Paused;
     }
@@ -202,8 +193,8 @@ public class MediaPlayerImpl implements MediaPlayer {
         backend.release();
         decoder.exit();
 
-        if(feeder != null)
-            feeder.release();
+        if(virtualMediaPlayer != null)
+            virtualMediaPlayer.release();
 
         if(wakeLock != null && wakeLock.isHeld())
             wakeLock.release();
@@ -217,13 +208,14 @@ public class MediaPlayerImpl implements MediaPlayer {
     @Override
     public int getCurrentPosition() {
         if(state == PlaybackState.Paused) {
-            return (int) mediaInfo.timeToPlayBytes(pauseSample * mediaInfo.getSampleSize()).inMillis();
+            //return (int) mediaInfo.timeToPlayBytes(pauseSample * mediaInfo.getSampleSize()).inMillis();
         } else if(state == PlaybackState.Playing) {
             Clock.Instant now = Clock.getTime();
-            return (int) mediaInfo.timeToPlayBytes(feeder.tellAt(now) * mediaInfo.getSampleSize()).inMillis();
+            // return (int) mediaInfo.timeToPlayBytes(virtualMediaPlayer.tellAt(now) * mediaInfo.getSampleSize()).inMillis();
         } else {
             return 0;
         }
+        return 0;
     }
 
     @Override

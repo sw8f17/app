@@ -1,12 +1,10 @@
 package rocks.stalin.android.app.playback;
 
 import java.nio.ByteBuffer;
-import java.util.PriorityQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import rocks.stalin.android.app.decoding.MP3MediaInfo;
-import rocks.stalin.android.app.playback.actions.TimedAction;
+import rocks.stalin.android.app.decoding.MediaInfo;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.time.Clock;
 
@@ -24,13 +22,13 @@ public class LocalAudioMixer implements AudioMixer {
     private int lastWriteEnd;
     private Clock.Instant bufferStart;
 
-    private MP3MediaInfo bufferMediaInfo;
+    private MediaInfo bufferMediaInfo;
 
     public LocalAudioMixer() {
     }
 
     @Override
-    public void change(MP3MediaInfo mediaInfo) {
+    public void change(MediaInfo mediaInfo) {
         //Hardcoded buffer max size of 10
         bufferLock.lock();
         try {
@@ -59,7 +57,7 @@ public class LocalAudioMixer implements AudioMixer {
     }
 
     @Override
-    public void pushFrame(MP3MediaInfo mediaInfo, Clock.Instant timeToPlay, ByteBuffer soundData) {
+    public void pushFrame(MediaInfo mediaInfo, Clock.Instant timeToPlay, ByteBuffer soundData) {
         LogHelper.i(MACH_TAG, "Frame:", timeToPlay, "@", mediaInfo.timeToPlayBytes(soundData.capacity()));
 
 
@@ -92,7 +90,7 @@ public class LocalAudioMixer implements AudioMixer {
             }
 
             if(lastWriteEnd != offset) {
-                if(Math.abs(offset - lastWriteEnd) < 100)
+                if(Math.abs(offset - lastWriteEnd) < 1)
                     offset = lastWriteEnd;
                 else
                     LogHelper.w(TAG, "Bad offset, we are wrong by ", offset - nativeBuffer.position());
@@ -116,9 +114,9 @@ public class LocalAudioMixer implements AudioMixer {
         }
     }
 
-    public ByteBuffer readFor(MP3MediaInfo mediaInfo, Clock.Instant time, int samples) {
+    public ByteBuffer readFor(MediaInfo mediaInfo, Clock.Instant time, int samples) {
         int missingBytes = samples * mediaInfo.getSampleSize();
-        LogHelper.i(TAG, "Reading ", missingBytes, " bytes from the timed buffer");
+        //LogHelper.i(TAG, "Reading ", missingBytes, " bytes from the timed buffer");
 
         ByteBuffer mixedBuffer = ByteBuffer.allocate(missingBytes);
 
@@ -133,7 +131,7 @@ public class LocalAudioMixer implements AudioMixer {
 
         Clock.Duration diff = time.sub(bufferStart);
         int offset = bufferMediaInfo.bytesPlayedInTime(diff);
-        LogHelper.i(TAG, "diff is ", diff);
+        //LogHelper.i(TAG, "diff is ", diff);
         if(offset % bufferMediaInfo.getSampleSize() != 0) {
             offset -= offset % bufferMediaInfo.getSampleSize();
         }
@@ -142,7 +140,8 @@ public class LocalAudioMixer implements AudioMixer {
             if(Math.abs(offset - lastReadEnd) < 1000)
                 offset = lastReadEnd;
             else
-                LogHelper.w(TAG, "We will be skipping ", offset - lastReadEnd, " bytes");
+                //LogHelper.w(TAG, "We will be skipping ", offset - lastReadEnd, " bytes");
+                ;
         }
 
         bufferLock.lock();
@@ -156,7 +155,7 @@ public class LocalAudioMixer implements AudioMixer {
             }
             if(offset <= nativeBuffer.limit()) {
                 nativeBuffer.position(offset);
-                LogHelper.i(TAG, "Getting ", missingBytes, " from ", nativeBuffer.limit() - nativeBuffer.position());
+                //LogHelper.i(TAG, "Getting ", missingBytes, " from ", nativeBuffer.limit() - nativeBuffer.position());
                 ByteBuffer dupBuffer = nativeBuffer.duplicate();
                 dupBuffer.limit(offset + missingBytes);
                 mixedBuffer.put(dupBuffer);
@@ -166,7 +165,7 @@ public class LocalAudioMixer implements AudioMixer {
                 }
                 lastReadEnd = dupBuffer.position();
             } else {
-                LogHelper.w(TAG, "The requested music is after at ", offset, " we only have data to ", mixedBuffer.limit());
+                LogHelper.w(TAG, "The requested music is after at ", offset, " we only have data to ", nativeBuffer.limit());
                 mixedBuffer.position(mixedBuffer.capacity());
                 nativeBuffer.position(nativeBuffer.limit());
                 lastReadEnd += missingBytes;

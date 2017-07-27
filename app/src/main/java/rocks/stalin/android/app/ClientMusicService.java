@@ -3,7 +3,6 @@ package rocks.stalin.android.app;
 import android.app.Service;
 import android.content.Intent;
 import android.net.wifi.p2p.WifiP2pManager;
-import android.os.Debug;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
@@ -11,7 +10,7 @@ import android.support.annotation.Nullable;
 import java.util.concurrent.ExecutionException;
 
 import rocks.stalin.android.app.decoding.MP3Encoding;
-import rocks.stalin.android.app.decoding.MP3MediaInfo;
+import rocks.stalin.android.app.decoding.MediaInfo;
 import rocks.stalin.android.app.framework.concurrent.ServiceLocator;
 import rocks.stalin.android.app.framework.concurrent.TaskScheduler;
 import rocks.stalin.android.app.framework.concurrent.observable.ObservableFuture;
@@ -22,14 +21,14 @@ import rocks.stalin.android.app.network.OffsetSource;
 import rocks.stalin.android.app.network.OffsetSourceFactory;
 import rocks.stalin.android.app.network.WifiP2PConnectionFactory;
 import rocks.stalin.android.app.network.WifiP2PManagerFacade;
-import rocks.stalin.android.app.playback.LocalAudioMixer;
-import rocks.stalin.android.app.playback.AudioSink;
+import rocks.stalin.android.app.playback.BetterAudioSink;
+import rocks.stalin.android.app.playback.LocalBufferQueue;
 import rocks.stalin.android.app.playback.MediaPlayerBackend;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
 import rocks.stalin.android.app.playback.actions.PauseAction;
 import rocks.stalin.android.app.playback.actions.PlayAction;
-import rocks.stalin.android.app.proto.MediaInfo;
 import rocks.stalin.android.app.proto.Music;
+import rocks.stalin.android.app.proto.NewMusic;
 import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.proto.SongChangeCommand;
@@ -53,8 +52,6 @@ public class ClientMusicService extends Service {
     private TaskExecutor executor;
     private TaskScheduler scheduler;
 
-    private LocalAudioMixer localAudioMixer;
-    private AudioSink sink;
     private MediaPlayerBackend backend;
     private OffsetSource timeService = null;
 
@@ -80,16 +77,16 @@ public class ClientMusicService extends Service {
         WifiP2pManager.Channel channel = rawManager.initialize(this, getMainLooper(), null);
         manager = new WifiP2PManagerFacade(rawManager, channel);
 
-        localAudioMixer = new LocalAudioMixer();
-        sink = new AudioSink(localAudioMixer);
-        backend = new MediaPlayerBackend(localAudioMixer, sink, scheduler);
+        BetterAudioSink betterSink = new BetterAudioSink();
+        LocalBufferQueue queue = new LocalBufferQueue();
+        backend = new MediaPlayerBackend(queue, betterSink, scheduler);
         //Debug.startMethodTracing("trce");
 
         PowerManager pm = getSystemService(PowerManager.class);
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SMUS-Client");
     }
 
-    MP3MediaInfo mediaInfo;
+    MediaInfo mediaInfo;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -154,10 +151,10 @@ public class ClientMusicService extends Service {
                                 time = time.sub(timeService.getOffset());
                             }
 
-                            MediaInfo newInfo = message.songmetadata.mediainfo;
+                            rocks.stalin.android.app.proto.MediaInfo newInfo = message.songmetadata.mediainfo;
 
                             MP3Encoding encoding = MP3Encoding.UNSIGNED16;
-                            mediaInfo = new MP3MediaInfo(newInfo.samplerate, newInfo.channels, newInfo.framesize, encoding);
+                            mediaInfo = new MediaInfo(newInfo.samplerate, newInfo.channels, newInfo.framesize, encoding);
 
                             MediaChangeAction action = new MediaChangeAction(time, mediaInfo);
                             backend.pushAction(action);
@@ -175,6 +172,13 @@ public class ClientMusicService extends Service {
                             backend.pushFrame(mediaInfo, playTime, message.data.asByteBuffer());
                         }
                     });
+                    connection.addHandler(NewMusic.class, new MessageConnection.MessageListener<NewMusic, NewMusic.Builder>() {
+                        @Override
+                        public void packetReceived(NewMusic message) {
+                            Clock.Instant playTime = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
+                            backend.pushBuffer(message.data.asByteBuffer(), playTime);
+                        }
+                    });
                 }
             });
         }
@@ -183,7 +187,6 @@ public class ClientMusicService extends Service {
 
     @Override
     public void onDestroy() {
-        sink.release();
         if(wakeLock.isHeld())
             wakeLock.release();
         //Debug.stopMethodTracing();

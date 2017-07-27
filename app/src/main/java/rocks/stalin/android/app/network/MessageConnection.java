@@ -17,6 +17,7 @@ import rocks.stalin.android.app.framework.Lifecycle;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.framework.concurrent.TimeAwareRunnable;
 import rocks.stalin.android.app.proto.Music;
+import rocks.stalin.android.app.proto.NewMusic;
 import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.proto.SeekCommand;
@@ -139,6 +140,9 @@ public class MessageConnection implements Lifecycle, TimeAwareRunnable {
                 break;
             case 9:
                 message = SntpResponse.ADAPTER.decode(data);
+                break;
+            case 10:
+                message = NewMusic.ADAPTER.decode(data);
                 break;
             default:
                 LogHelper.w(TAG, "Received unknown message of type ", type);

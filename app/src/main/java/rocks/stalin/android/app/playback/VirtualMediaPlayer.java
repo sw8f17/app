@@ -2,12 +2,11 @@ package rocks.stalin.android.app.playback;
 
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import rocks.stalin.android.app.decoding.MP3File;
-import rocks.stalin.android.app.decoding.MP3MediaInfo;
+import rocks.stalin.android.app.decoding.MediaInfo;
 import rocks.stalin.android.app.framework.Lifecycle;
 import rocks.stalin.android.app.framework.concurrent.TaskScheduler;
 import rocks.stalin.android.app.framework.concurrent.TimeAwareRunnable;
@@ -23,12 +22,12 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
     private boolean running = false;
 
     private MP3File file;
-    private MP3MediaInfo mediaInfo;
+    private MediaInfo mediaInfo;
     private List<TimedEventQueue> slaves;
     private long nextSample;
     private Clock.Instant nextFrameStart;
 
-    public VirtualMediaPlayer(MP3File file, MP3MediaInfo mediaInfo, List<TimedEventQueue> slaves, TaskScheduler scheduler) {
+    public VirtualMediaPlayer(MP3File file, MediaInfo mediaInfo, List<TimedEventQueue> slaves, TaskScheduler scheduler) {
         this.scheduler = scheduler;
 
         this.file = file;
@@ -70,7 +69,7 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
                 ByteBuffer left = ByteBuffer.allocate(read.limit() / mediaInfo.channels);
                 ByteBuffer right = ByteBuffer.allocate(read.limit() / mediaInfo.channels);
 
-                MP3MediaInfo cMI = new MP3MediaInfo(mediaInfo.sampleRate, 1, mediaInfo.frameSize / mediaInfo.channels, mediaInfo.encoding);
+                MediaInfo cMI = new MediaInfo(mediaInfo.sampleRate, 1, mediaInfo.frameSize / mediaInfo.channels, mediaInfo.encoding);
 
                 for (int i = read.position(); i < read.limit(); i += mediaInfo.getSampleSize()) {
                     for (int j = 0; j < mediaInfo.encoding.getSampleSize(); j++)

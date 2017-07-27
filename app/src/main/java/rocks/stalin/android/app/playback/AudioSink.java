@@ -6,17 +6,12 @@ import android.media.AudioTimestamp;
 import android.media.AudioTrack;
 
 import java.nio.ByteBuffer;
-import java.util.Date;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import rocks.stalin.android.app.decoding.MP3Encoding;
-import rocks.stalin.android.app.decoding.MP3MediaInfo;
-import rocks.stalin.android.app.playback.actions.TimedAction;
+import rocks.stalin.android.app.decoding.MediaInfo;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.time.Clock;
 
@@ -35,7 +30,7 @@ public class AudioSink {
     private Semaphore audioWriteLock;
     private Lock atLock = new ReentrantLock(true);
 
-    private MP3MediaInfo mediaInfo;
+    private MediaInfo mediaInfo;
 
     private long bufferStart = 0;
 
@@ -43,7 +38,7 @@ public class AudioSink {
         //We want to preload the track
         audioWriteLock = new Semaphore(0, true);
         this.mixer = mixer;
-        mediaInfo = new MP3MediaInfo(44100, 1, 0, MP3Encoding.UNSIGNED16);
+        mediaInfo = new MediaInfo(44100, 1, 0, MP3Encoding.UNSIGNED16);
 
         audioThread = new Thread() {
             @Override
@@ -83,14 +78,14 @@ public class AudioSink {
                                 playbackPosition = at.getPlaybackHeadPosition();
                             }
 
-                            LogHelper.i("VIZ-ROBOT", "PlayHead:", now);
+                            //LogHelper.i("VIZ-ROBOT", "PlayHead:", now);
 
                             int space = (int) ((at.getPlaybackHeadPosition() + at.getBufferSizeInFrames()) - bufferStart);
 
                             Clock.Duration expectedEnd = mediaInfo.timeToPlayBytes((bufferStart - playbackPosition) * mediaInfo.getSampleSize());
 
-                            LogHelper.i(TAG, "At ", now, ", I'm expecting to run out of data in ", expectedEnd, ", or at ", now.add(expectedEnd));
-                            LogHelper.i(TAG, "I presented ", timestamp.framePosition, " at ", now, " but i'm actually at ", at.getPlaybackHeadPosition());
+                            //LogHelper.i(TAG, "At ", now, ", I'm expecting to run out of data in ", expectedEnd, ", or at ", now.add(expectedEnd));
+                            //LogHelper.i(TAG, "I presented ", timestamp.framePosition, " at ", now, " but i'm actually at ", at.getPlaybackHeadPosition());
 
                             buffer = AudioSink.this.mixer.readFor(mediaInfo, now.add(expectedEnd), space);
 
@@ -116,7 +111,7 @@ public class AudioSink {
         audioThread.start();
     }
 
-    public void change(MP3MediaInfo mediaInfo) {
+    public void change(MediaInfo mediaInfo) {
         if(at != null)
             throw new IllegalStateException("You can't change media params before a reset");
         this.mediaInfo = mediaInfo;
@@ -171,7 +166,7 @@ public class AudioSink {
 
             @Override
             public void onPeriodicNotification(AudioTrack track) {
-                LogHelper.i(TAG, "Instant for more data");
+                //LogHelper.i(TAG, "Instant for more data");
                 if(audioWriteLock.availablePermits() > 0)
                     LogHelper.w(TAG, "Buffer underflow. It seems like we aren't reading data quickly enough. You might notice pauses");
                 audioWriteLock.release();

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package rocks.stalin.scotty;
+
+import "timestamp.proto";
+
+option java_package = "rocks.stalin.android.app.proto";
+
+message NewMusic {
+    //Time to play the frame
+    Timestamp playtime = 1;
+
+    //Music data
+    bytes data = 2;
+}

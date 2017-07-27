@@ -2,10 +2,8 @@ package rocks.stalin.android.app.playback.actions;
 
 import com.squareup.wire.Message;
 
-import rocks.stalin.android.app.decoding.MP3MediaInfo;
-import rocks.stalin.android.app.network.Messageable;
+import rocks.stalin.android.app.decoding.MediaInfo;
 import rocks.stalin.android.app.playback.ActionStrategy;
-import rocks.stalin.android.app.proto.MediaInfo;
 import rocks.stalin.android.app.proto.Metadata;
 import rocks.stalin.android.app.proto.SongChangeCommand;
 import rocks.stalin.android.app.proto.Timestamp;
@@ -16,9 +14,9 @@ import rocks.stalin.android.app.utils.time.Clock;
  */
 
 public class MediaChangeAction extends TimedAction<SongChangeCommand, SongChangeCommand.Builder> {
-    private MP3MediaInfo mediaInfo;
+    private MediaInfo mediaInfo;
 
-    public MediaChangeAction(Clock.Instant time, MP3MediaInfo mediaInfo) {
+    public MediaChangeAction(Clock.Instant time, MediaInfo mediaInfo) {
         super(time);
         this.mediaInfo = mediaInfo;
     }
@@ -39,11 +37,11 @@ public class MediaChangeAction extends TimedAction<SongChangeCommand, SongChange
         return new SongChangeCommand.Builder()
                 .playtime(time)
                 .songmetadata(new Metadata.Builder()
-                    .mediainfo(new MediaInfo.Builder()
+                    .mediainfo(new rocks.stalin.android.app.proto.MediaInfo.Builder()
                         .samplerate((int) mediaInfo.sampleRate)
                         .channels(mediaInfo.channels)
                         .framesize((int) mediaInfo.frameSize)
-                        .encoding(MediaInfo.Encoding.UNSIGNED16)
+                        .encoding(rocks.stalin.android.app.proto.MediaInfo.Encoding.UNSIGNED16)
                         .build())
                     .build())
                 .build();

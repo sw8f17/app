@@ -25,7 +25,7 @@ static const char *TAG = "JNI-NATIVE";
         if(fields.mp3fileClazz == NULL)
             return;
 
-        fields.mp3fileCons = env->GetMethodID(fields.mp3fileClazz, "<init>", "(JJJILrocks/stalin/android/app/decoding/MP3MediaInfo;)V");
+        fields.mp3fileCons = env->GetMethodID(fields.mp3fileClazz, "<init>", "(JJJILrocks/stalin/android/app/decoding/MediaInfo;)V");
         if(fields.mp3fileCons == NULL)
             return;
 
@@ -37,7 +37,7 @@ static const char *TAG = "JNI-NATIVE";
         if(fields.mp3encodingValueof == NULL)
             return;
 
-        fields.mp3mediainfoClazz = (jclass) env->NewGlobalRef(env->FindClass("rocks/stalin/android/app/decoding/MP3MediaInfo"));
+        fields.mp3mediainfoClazz = (jclass) env->NewGlobalRef(env->FindClass("rocks/stalin/android/app/decoding/MediaInfo"));
         if(fields.mp3mediainfoClazz == NULL)
             return;
 

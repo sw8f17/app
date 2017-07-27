@@ -7,8 +7,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import rocks.stalin.android.app.decoding.MP3MediaInfo;
-import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
+import rocks.stalin.android.app.decoding.MediaInfo;
 import rocks.stalin.android.app.framework.concurrent.TaskScheduler;
 import rocks.stalin.android.app.playback.actions.TimedAction;
 import rocks.stalin.android.app.utils.LogHelper;
@@ -19,9 +18,11 @@ import static android.content.ContentValues.TAG;
 public class MediaPlayerBackend implements ActionStrategy, TimedEventQueue {
     private static final String MACH_TAG = "VIZ-ROBOT";
 
-    private final TaskScheduler scheduler;
-    private AudioMixer mixer;
-    private AudioSink sink;
+    private LocalBufferQueue queue;
+    private BetterAudioSink betterAudioSink;
+    private TaskScheduler scheduler;
+
+    private MediaInfo currentMediaInfo;
 
     private Future<?> timerHandle;
     private ActionTask scheduled = null;
@@ -31,9 +32,9 @@ public class MediaPlayerBackend implements ActionStrategy, TimedEventQueue {
     private PriorityQueue<TimedAction> actions;
 
 
-    public MediaPlayerBackend(AudioMixer mixer, AudioSink sink, TaskScheduler scheduler){
-        this.mixer = mixer;
-        this.sink = sink;
+    public MediaPlayerBackend(LocalBufferQueue queue, BetterAudioSink betterAudioSink, TaskScheduler scheduler){
+        this.queue = queue;
+        this.betterAudioSink = betterAudioSink;
         this.scheduler = scheduler;
 
         this.actions = new PriorityQueue<>();
@@ -74,26 +75,48 @@ public class MediaPlayerBackend implements ActionStrategy, TimedEventQueue {
     }
 
     @Override
-    public void pushFrame(MP3MediaInfo cMI, Clock.Instant nextFrameStart, ByteBuffer left) {
-        mixer.pushFrame(cMI, nextFrameStart, left);
+    public void pushFrame(MediaInfo cMI, Clock.Instant timestamp, ByteBuffer data) {
+        //mixer.pushFrame(cMI, timestamp, data);
+    }
+
+    private ByteBuffer copy(ByteBuffer src) {
+        // Create clone with same capacity as original.
+        final ByteBuffer clone = (src.isDirect()) ?
+                ByteBuffer.allocateDirect(src.capacity()) :
+                ByteBuffer.allocate(src.capacity());
+
+        clone.put(src);
+        clone.flip();
+
+        return clone;
+    }
+
+    public Clock.Duration calculateBufferTime(ByteBuffer buffer) {
+        return currentMediaInfo.timeToPlayBytes(buffer.limit());
+    }
+
+    public void pushBuffer(ByteBuffer buffer, Clock.Instant presentationOffset) {
+        queue.pushBuffer(presentationOffset, calculateBufferTime(buffer));
+        betterAudioSink.queueAudio(copy(buffer), presentationOffset);
     }
 
     @Override
     public void play() {
-        sink.play();
+        //sink.play();
+        betterAudioSink.play();
     }
 
     @Override
     public void pause() {
-        sink.stop();
-        mixer.flush();
+        //sink.stop();
+        betterAudioSink.pause();
     }
 
     @Override
-    public void changeMedia(MP3MediaInfo mediaInfo) {
-        sink.reset();
-        sink.change(mediaInfo);
-        mixer.change(mediaInfo);
+    public void changeMedia(MediaInfo mediaInfo) {
+        this.currentMediaInfo = mediaInfo;
+        betterAudioSink.reset();
+        betterAudioSink.setMediaType(mediaInfo);
     }
 
     private void finalizeAction() {
@@ -105,8 +128,7 @@ public class MediaPlayerBackend implements ActionStrategy, TimedEventQueue {
 
     @Override
     public void release() {
-        sink.release();
-        mixer.flush();
+        //sink.release();
     }
 
     private static class ActionTask implements Runnable {

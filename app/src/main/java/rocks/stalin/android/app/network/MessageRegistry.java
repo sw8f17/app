@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import rocks.stalin.android.app.proto.Music;
+import rocks.stalin.android.app.proto.NewMusic;
 import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.proto.SeekCommand;
@@ -37,6 +38,7 @@ public class MessageRegistry {
         messages.put(SessionInfo.class, 7);
         messages.put(SntpRequest.class, 8);
         messages.put(SntpResponse.class, 9);
+        messages.put(NewMusic.class, 10);
     }
 
     public int getID(Class<? extends Message> type) {

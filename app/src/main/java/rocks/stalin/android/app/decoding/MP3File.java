@@ -8,9 +8,9 @@ import java.nio.ByteBuffer;
 
 public class MP3File {
     public long context; /* Set by native */
-    private MP3MediaInfo mediaInfo;
+    private MediaInfo mediaInfo;
 
-    public MP3File(long handle, long buffer, long bufferSize, int fd, MP3MediaInfo mediaInfo) {
+    public MP3File(long handle, long buffer, long bufferSize, int fd, MediaInfo mediaInfo) {
         this.mediaInfo = mediaInfo;
         nativeCons(handle, buffer, bufferSize, fd);
     }
@@ -33,7 +33,7 @@ public class MP3File {
         return ByteBuffer.wrap(decodeFrameNative());
     }
 
-    public MP3MediaInfo getMediaInfo() {
+    public MediaInfo getMediaInfo() {
         return mediaInfo;
     }
 
