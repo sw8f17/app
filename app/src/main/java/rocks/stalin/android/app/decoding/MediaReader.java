@@ -164,6 +164,8 @@ public class MediaReader extends MediaCodec.Callback {
     @Override
     public void onError(@NonNull MediaCodec codec, @NonNull MediaCodec.CodecException e) {
         //TODO
+        LogHelper.e(TAG, "There was an error in the media codec");
+        e.printStackTrace();
     }
 
     @Override

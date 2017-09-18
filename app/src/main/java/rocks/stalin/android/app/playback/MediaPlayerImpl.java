@@ -2,6 +2,8 @@ package rocks.stalin.android.app.playback;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.PowerManager;
 
 import java.io.IOException;
@@ -33,7 +35,7 @@ public class MediaPlayerImpl implements MediaPlayer {
     private MP3Decoder decoder;
     private MP3File currentFile;
 
-    private BetterAudioSink betterAudioSink;
+    private AudioSink audioSink;
 
     private PlaybackState state;
 
@@ -44,7 +46,7 @@ public class MediaPlayerImpl implements MediaPlayer {
 
     private List<TimedEventQueue> slaves;
 
-    private BetterVirtualMediaPlayer virtualMediaPlayer;
+    private VirtualMediaPlayer virtualMediaPlayer;
 
     private PowerManager.WakeLock wakeLock;
 
@@ -60,9 +62,9 @@ public class MediaPlayerImpl implements MediaPlayer {
         decoder = new MP3Decoder();
         decoder.init();
 
-        betterAudioSink = new BetterAudioSink();
-        final LocalBufferQueue queue = new LocalBufferQueue();
-        backend = new MediaPlayerBackend(queue, betterAudioSink, scheduler);
+        audioSink = new AudioSink();
+        final BufferTracker queue = new BufferTracker();
+        backend = new MediaPlayerBackend(queue, audioSink, scheduler);
 
         slaves = new ArrayList<>();
         slaves.add(backend);
@@ -118,12 +120,21 @@ public class MediaPlayerImpl implements MediaPlayer {
             public void call(MediaInfo mediaInfo) {
                 Clock.Instant time = Clock.getTime();
                 MediaChangeAction action = new MediaChangeAction(time, mediaInfo);
-                for(TimedEventQueue slave : slaves)
+                for (TimedEventQueue slave : slaves)
                     slave.pushAction(action);
 
-                virtualMediaPlayer = new BetterVirtualMediaPlayer(reader, mediaInfo, slaves, scheduler);
+                virtualMediaPlayer = new VirtualMediaPlayer(reader, mediaInfo, slaves, scheduler);
                 state = PlaybackState.Prepared;
-                preparedListener.onPrepared(MediaPlayerImpl.this);
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            preparedListener.onPrepared(MediaPlayerImpl.this);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
             }
         });
     }
@@ -141,9 +152,6 @@ public class MediaPlayerImpl implements MediaPlayer {
 
         Clock.Instant startTime = Clock.getTime().add(Clock.Duration.fromMillis(1000));
 
-        currentFile.seek(pauseSample);
-
-        // virtualMediaPlayer.setStartTime(startTime);
         if(state == PlaybackState.Prepared)
             virtualMediaPlayer.start();
         virtualMediaPlayer.play(startTime);

@@ -1,6 +1,8 @@
 package rocks.stalin.android.app.decoding;
 
+import android.media.AudioFormat;
 import android.media.MediaFormat;
+import android.os.Build;
 
 import rocks.stalin.android.app.utils.time.Clock;
 
@@ -39,18 +41,32 @@ public class MediaInfo {
         return (int) ((sampleRate * duration.inNanos() * getSampleSize()) / 1000000000);
     }
 
-    public static MediaInfo fromFormat(MediaFormat format) {
-        MP3Encoding encoding;
-        switch(format.getInteger(MediaFormat.KEY_PCM_ENCODING)) {
-            case 8:
-                encoding = MP3Encoding.UNSIGNED8;
-                break;
-            case 16:
-                encoding = MP3Encoding.UNSIGNED16;
-                break;
-            default:
-                throw new UnsupportedOperationException("Unsupported pcm encoding");
+    private static MP3Encoding getEncoding(MediaFormat format) {
+        // Translate the encoding from the MediaFormat to something we know
+        // If we are on an old version of android, or the key is missing we default
+        // To Unsigned16
+        MP3Encoding encoding = MP3Encoding.UNSIGNED16;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                switch (format.getInteger(MediaFormat.KEY_PCM_ENCODING)) {
+                    case AudioFormat.ENCODING_PCM_8BIT:
+                        encoding = MP3Encoding.UNSIGNED8;
+                        break;
+                    case AudioFormat.ENCODING_PCM_16BIT:
+                        encoding = MP3Encoding.UNSIGNED16;
+                        break;
+                    default:
+                        throw new UnsupportedOperationException("Unsupported pcm encoding");
+                }
+            }
         }
+
+        return encoding;
+    }
+
+    public static MediaInfo fromFormat(MediaFormat format) {
+        MP3Encoding encoding = getEncoding(format);
         return new MediaInfo(
                 format.getInteger(MediaFormat.KEY_SAMPLE_RATE),
                 format.getInteger(MediaFormat.KEY_CHANNEL_COUNT),

@@ -7,12 +7,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
 import rocks.stalin.android.app.framework.functional.Consumer;
+import rocks.stalin.android.app.utils.LogHelper;
 
 /**
  * Created by delusional on 5/14/17.
  */
 
 public class ObservableFutureTask<T> extends FutureTask<T> implements ObservableFuture<T> {
+    private static final String TAG = LogHelper.makeLogTag(ObservableFutureTask.class);
     private Consumer<T> listener;
     private Consumer<Throwable> errorListener;
 
@@ -43,12 +45,23 @@ public class ObservableFutureTask<T> extends FutureTask<T> implements Observable
         try {
             value = getUninterruptibly();
         } catch (ExecutionException | RuntimeException e) {
-            if(errorListener != null)
+            if(errorListener != null) {
                 errorListener.call(e);
+            } else {
+                LogHelper.e(TAG, "The future exited with an exception, but no error handler was set");
+                e.printStackTrace();
+            }
             return;
         }
-        if(listener != null)
-            listener.call(value);
+        if(listener != null) {
+            try {
+                listener.call(value);
+            } catch (Exception e) {
+                LogHelper.e(TAG, "Exception occurred while calling future callback");
+                e.printStackTrace();
+                throw e;
+            }
+        }
         super.done();
     }
 

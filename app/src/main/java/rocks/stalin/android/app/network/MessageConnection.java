@@ -16,7 +16,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import rocks.stalin.android.app.framework.Lifecycle;
 import rocks.stalin.android.app.framework.concurrent.TaskExecutor;
 import rocks.stalin.android.app.framework.concurrent.TimeAwareRunnable;
-import rocks.stalin.android.app.proto.Music;
 import rocks.stalin.android.app.proto.NewMusic;
 import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.proto.PlayCommand;
@@ -25,6 +24,7 @@ import rocks.stalin.android.app.proto.SessionInfo;
 import rocks.stalin.android.app.proto.SntpRequest;
 import rocks.stalin.android.app.proto.SntpResponse;
 import rocks.stalin.android.app.proto.SongChangeCommand;
+import rocks.stalin.android.app.proto.Sync;
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
 
@@ -117,9 +117,6 @@ public class MessageConnection implements Lifecycle, TimeAwareRunnable {
             case 1:
                 message = Welcome.ADAPTER.decode(data);
                 break;
-            case 2:
-                message = Music.ADAPTER.decode(data);
-                break;
             case 3:
                 message = PlayCommand.ADAPTER.decode(data);
                 break;
@@ -143,6 +140,9 @@ public class MessageConnection implements Lifecycle, TimeAwareRunnable {
                 break;
             case 10:
                 message = NewMusic.ADAPTER.decode(data);
+                break;
+            case 11:
+                message = Sync.ADAPTER.decode(data);
                 break;
             default:
                 LogHelper.w(TAG, "Received unknown message of type ", type);

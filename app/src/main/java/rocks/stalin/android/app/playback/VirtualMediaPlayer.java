@@ -1,15 +1,21 @@
 package rocks.stalin.android.app.playback;
 
-import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-import rocks.stalin.android.app.decoding.MP3File;
+import rocks.stalin.android.app.decoding.MP3Encoding;
 import rocks.stalin.android.app.decoding.MediaInfo;
+import rocks.stalin.android.app.decoding.MediaReader;
 import rocks.stalin.android.app.framework.Lifecycle;
+import rocks.stalin.android.app.framework.concurrent.ScopedLock;
 import rocks.stalin.android.app.framework.concurrent.TaskScheduler;
 import rocks.stalin.android.app.framework.concurrent.TimeAwareRunnable;
+import rocks.stalin.android.app.framework.functional.Consumer;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.time.Clock;
 
@@ -19,98 +25,125 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
     private final TaskScheduler scheduler;
 
     private ScheduledFuture<?> taskHandle = null;
+    private Lock actionLock = new ReentrantLock(true);
     private boolean running = false;
 
-    private MP3File file;
-    private MediaInfo mediaInfo;
-    private List<TimedEventQueue> slaves;
-    private long nextSample;
-    private Clock.Instant nextFrameStart;
 
-    public VirtualMediaPlayer(MP3File file, MediaInfo mediaInfo, List<TimedEventQueue> slaves, TaskScheduler scheduler) {
+    private final MediaReader reader;
+    private final MediaInfo format;
+    private List<TimedEventQueue> slaves;
+    private BlockingQueue<MediaReader.Handle> handles;
+
+    private Keyframe lastKey;
+    private Clock.Instant lastFrameMediaTime;
+
+    public VirtualMediaPlayer(MediaReader reader, MediaInfo format, List<TimedEventQueue> slaves, TaskScheduler scheduler) {
         this.scheduler = scheduler;
 
-        this.file = file;
-        this.mediaInfo = mediaInfo;
+        this.reader = reader;
+        this.format = format;
         this.slaves = slaves;
+        this.handles = new PriorityBlockingQueue<>();
+        lastFrameMediaTime = new Clock.Instant(0, 0);
+
+        reader.setOnBufferAvailable(new OnBufferAvailableCB());
     }
 
-    public void setStartTime(Clock.Instant instant) {
-        nextFrameStart = instant;
+    private class OnBufferAvailableCB implements Consumer<MediaReader.Handle> {
+        public void call(MediaReader.Handle handle) {
+            addBuffer(handle);
+        }
     }
 
-    public long tellAt(Clock.Instant time) {
-        if(nextFrameStart == null)
-            return 0;
-        Clock.Duration diff = time.sub(nextFrameStart);
-        long expectedSamples = mediaInfo.bytesPlayedInTime(diff) / mediaInfo.getSampleSize();
-
-        if (time.before(nextFrameStart))
-            return nextSample - expectedSamples;
-
-        return nextSample + expectedSamples;
+    private void addBuffer(MediaReader.Handle handle) {
+        try(ScopedLock lock = new ScopedLock(actionLock)) {
+            handles.add(handle);
+        }
     }
 
-    @Override
+    private void schedule() {
+        try {
+            MediaReader.Handle next = handles.take();
+
+            Clock.Duration playTime = next.getPresentationOffset().sub(lastKey.mediaTime);
+            Clock.Instant nextTime = lastKey.realTime.add(playTime);
+            try(ScopedLock lock = new ScopedLock(actionLock)) {
+                handles.add(next);
+                Clock.Duration thisTime = nextTime.sub(Clock.getTime());
+                // @HACK: The 3 second buffering really should be handled somewhere else
+                // Maybe in a strategy class or something?
+                long delay = thisTime.sub(Clock.Duration.fromMillis(3000)).inMillis();
+                taskHandle = scheduler.schedule(this, delay, TimeUnit.MILLISECONDS);
+            }
+        } catch (InterruptedException e) {
+            //TODO: What do do about this
+            LogHelper.e(TAG, "I guess i got interrupted... What the hell am i supposed to do about that?");
+            Thread.currentThread().interrupt();
+        }
+    }
+
     public void run() {
         try {
-            LogHelper.i(TAG, "Feeding the audio player");
+            try (ScopedLock lock = new ScopedLock(actionLock)) {
+                try {
+                    MediaReader.Handle next = handles.take();
 
-            Clock.Instant now = Clock.getTime();
+                    for (TimedEventQueue slave : slaves) {
+                        slave.pushBuffer(next.buffer.duplicate(), next.getPresentationOffset());
 
-            Clock.Duration frameTime = mediaInfo.timeToPlayBytes(mediaInfo.frameSize);
-            Clock.Duration preloadBufferSize = frameTime.multiply(PRELOAD_SIZE);
-            Clock.Instant bufferEnd = now.add(preloadBufferSize);
+                        Clock.Instant now = Clock.getTime();
+                        slave.pushSync(now, tellAt(now).add(Clock.Duration.fromMillis(200)));
+                    }
 
-            while (nextFrameStart.before(bufferEnd)) {
-                LogHelper.i(TAG, "Inserting frame into the buffer for playback at ", nextFrameStart);
-                ByteBuffer read = file.decodeFrame();
-                /*
-                ByteBuffer left = ByteBuffer.allocate(read.limit() / mediaInfo.channels);
-                ByteBuffer right = ByteBuffer.allocate(read.limit() / mediaInfo.channels);
 
-                MediaInfo cMI = new MediaInfo(mediaInfo.sampleRate, 1, mediaInfo.frameSize / mediaInfo.channels, mediaInfo.encoding);
-
-                for (int i = read.position(); i < read.limit(); i += mediaInfo.getSampleSize()) {
-                    for (int j = 0; j < mediaInfo.encoding.getSampleSize(); j++)
-                        left.put(read.get());
-                    for (int j = 0; j < mediaInfo.encoding.getSampleSize(); j++)
-                        right.put(read.get());
+                    next.release();
+                } catch (InterruptedException e) {
+                    LogHelper.e(TAG, "I guess i got interrupted... What the hell am i supposed to do about that?");
+                    Thread.currentThread().interrupt();
                 }
-
-                left.flip();
-                right.flip();
-
-                //Make sure we are still supposed to be running before pushing the decoded frame
-                if (!isRunning())
-                    break;
-*/
-                for (TimedEventQueue slave : slaves)
-                    slave.pushFrame(mediaInfo, nextFrameStart, read.duplicate());
-                nextSample = file.tell();
-                nextFrameStart = nextFrameStart.add(mediaInfo.timeToPlayBytes(read.limit()));
             }
+
+            taskHandle = null;
+            schedule();
         } catch (Exception e) {
+            // @Cleanup Remove this when i get around to making the executors better
+            LogHelper.e(TAG, "Exception in run");
             e.printStackTrace();
-            throw e;
         }
+    }
+
+    public Clock.Instant tellAt(Clock.Instant time) {
+        if (time.before(lastKey.realTime))
+            return new Clock.Instant(0, 0);
+        Clock.Duration diff = time.sub(lastKey.realTime);
+        return lastKey.mediaTime.add(diff);
+    }
+
+    public void play(Clock.Instant playTime) {
+        lastKey = new Keyframe(lastFrameMediaTime, playTime);
+        // Hopefully someone has put some buffer into us before this
+        schedule();
+    }
+
+    public void pause(Clock.Instant pauseTime) {
+        taskHandle.cancel(false);
+        taskHandle = null;
+        lastFrameMediaTime = lastKey.mediaTime.add(pauseTime.sub(lastKey.realTime));
     }
 
     @Override
     public void start() {
-        //This may drift over time, but since we are mostly playing short tracks
-        //it might be ok? -JJ 10/05-2017
-        long period = mediaInfo.timeToPlayBytes(mediaInfo.frameSize).inNanos();
-        taskHandle = scheduler.submitWithFixedRate(this, period, TimeUnit.NANOSECONDS);
+        reader.start();
         running = true;
     }
 
     @Override
     public void stop() {
+        running = false;
+        reader.stop();
         if(taskHandle != null)
             taskHandle.cancel(true);
         taskHandle = null;
-        running = false;
     }
 
     @Override
@@ -124,7 +157,18 @@ class VirtualMediaPlayer implements Lifecycle, TimeAwareRunnable {
     }
 
     public void release() {
+        reader.reset();
         if(isRunning())
             stop();
+    }
+
+    private class Keyframe {
+        public Clock.Instant mediaTime;
+        public Clock.Instant realTime;
+
+        private Keyframe(Clock.Instant mediaTime, Clock.Instant realTime) {
+            this.mediaTime = mediaTime;
+            this.realTime = realTime;
+        }
     }
 }

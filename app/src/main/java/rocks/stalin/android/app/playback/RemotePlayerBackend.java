@@ -12,8 +12,8 @@ import rocks.stalin.android.app.framework.concurrent.observable.ObservableFuture
 import rocks.stalin.android.app.network.MessageConnection;
 import rocks.stalin.android.app.network.OffsetSource;
 import rocks.stalin.android.app.playback.actions.TimedAction;
-import rocks.stalin.android.app.proto.Music;
 import rocks.stalin.android.app.proto.NewMusic;
+import rocks.stalin.android.app.proto.Sync;
 import rocks.stalin.android.app.proto.Timestamp;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.time.Clock;
@@ -31,24 +31,6 @@ class RemotePlayerBackend implements TimedEventQueue {
         this.executor = executor;
     }
 
-    public void pushFrame(MediaInfo mediaInfo, Clock.Instant nextTime, ByteBuffer read) {
-        Clock.Instant correctedNextTime = nextTime.add(timeProvider.getOffset());
-        LogHelper.i(TAG, "Corrected time ", nextTime, " by ", timeProvider.getOffset(), " to ", correctedNextTime);
-        Timestamp timestampMessage = new Timestamp.Builder()
-                .millis(correctedNextTime.getMillis())
-                .nanos(correctedNextTime.getNanos())
-                .build();
-        Music musicMessage = new Music.Builder()
-                .data(ByteString.of(read))
-                .playtime(timestampMessage)
-                .build();
-        try {
-            connection.send(musicMessage, Music.class);
-        } catch (IOException e) {
-            LogHelper.w(TAG, "Failed transmitting the music packet");
-        }
-    }
-
     @Override
     public void pushBuffer(ByteBuffer copy, Clock.Instant presentationOffset) {
         //TODO send the data
@@ -64,6 +46,27 @@ class RemotePlayerBackend implements TimedEventQueue {
             connection.send(musicMessage, NewMusic.class);
         } catch (IOException e) {
             LogHelper.w(TAG, "Failed transmitting the new music packet");
+        }
+    }
+
+    @Override
+    public void pushSync(Clock.Instant realTime, Clock.Instant mediaTime) {
+        Timestamp realTimeMessage = new Timestamp.Builder()
+                .millis(realTime.getMillis())
+                .nanos(realTime.getNanos())
+                .build();
+        Timestamp mediaTimeMessage = new Timestamp.Builder()
+                .millis(mediaTime.getMillis())
+                .nanos(mediaTime.getNanos())
+                .build();
+        Sync syncMessage = new Sync.Builder()
+                .realtime(realTimeMessage)
+                .mediatime(mediaTimeMessage)
+                .build();
+        try {
+            connection.send(syncMessage, Sync.class);
+        } catch (IOException e) {
+            LogHelper.w(TAG, "Failed transmitting the sync packet");
         }
     }
 

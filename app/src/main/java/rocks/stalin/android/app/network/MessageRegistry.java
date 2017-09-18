@@ -5,7 +5,6 @@ import com.squareup.wire.Message;
 import java.util.HashMap;
 import java.util.Map;
 
-import rocks.stalin.android.app.proto.Music;
 import rocks.stalin.android.app.proto.NewMusic;
 import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.proto.PlayCommand;
@@ -14,6 +13,7 @@ import rocks.stalin.android.app.proto.SessionInfo;
 import rocks.stalin.android.app.proto.SntpRequest;
 import rocks.stalin.android.app.proto.SntpResponse;
 import rocks.stalin.android.app.proto.SongChangeCommand;
+import rocks.stalin.android.app.proto.Sync;
 import rocks.stalin.android.app.proto.Welcome;
 
 public class MessageRegistry {
@@ -30,7 +30,6 @@ public class MessageRegistry {
     //Add messages here
     private MessageRegistry() {
         messages.put(Welcome.class, 1);
-        messages.put(Music.class, 2);
         messages.put(PlayCommand.class, 3);
         messages.put(PauseCommand.class, 4);
         messages.put(SeekCommand.class, 5);
@@ -39,6 +38,7 @@ public class MessageRegistry {
         messages.put(SntpRequest.class, 8);
         messages.put(SntpResponse.class, 9);
         messages.put(NewMusic.class, 10);
+        messages.put(Sync.class, 11);
     }
 
     public int getID(Class<? extends Message> type) {

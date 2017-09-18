@@ -13,13 +13,12 @@ import rocks.stalin.android.app.playback.actions.TimedAction;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.time.Clock;
 
-import static android.content.ContentValues.TAG;
-
 public class MediaPlayerBackend implements ActionStrategy, TimedEventQueue {
+    private static final String TAG = LogHelper.makeLogTag(MediaPlayerBackend.class);
     private static final String MACH_TAG = "VIZ-ROBOT";
 
-    private LocalBufferQueue queue;
-    private BetterAudioSink betterAudioSink;
+    private BufferTracker tracker;
+    private AudioSink audioSink;
     private TaskScheduler scheduler;
 
     private MediaInfo currentMediaInfo;
@@ -32,9 +31,9 @@ public class MediaPlayerBackend implements ActionStrategy, TimedEventQueue {
     private PriorityQueue<TimedAction> actions;
 
 
-    public MediaPlayerBackend(LocalBufferQueue queue, BetterAudioSink betterAudioSink, TaskScheduler scheduler){
-        this.queue = queue;
-        this.betterAudioSink = betterAudioSink;
+    public MediaPlayerBackend(BufferTracker tracker, AudioSink audioSink, TaskScheduler scheduler){
+        this.tracker = tracker;
+        this.audioSink = audioSink;
         this.scheduler = scheduler;
 
         this.actions = new PriorityQueue<>();
@@ -74,11 +73,6 @@ public class MediaPlayerBackend implements ActionStrategy, TimedEventQueue {
         actions.add(action);
     }
 
-    @Override
-    public void pushFrame(MediaInfo cMI, Clock.Instant timestamp, ByteBuffer data) {
-        //mixer.pushFrame(cMI, timestamp, data);
-    }
-
     private ByteBuffer copy(ByteBuffer src) {
         // Create clone with same capacity as original.
         final ByteBuffer clone = (src.isDirect()) ?
@@ -91,32 +85,37 @@ public class MediaPlayerBackend implements ActionStrategy, TimedEventQueue {
         return clone;
     }
 
-    public Clock.Duration calculateBufferTime(ByteBuffer buffer) {
+    private Clock.Duration calculateBufferTime(ByteBuffer buffer) {
         return currentMediaInfo.timeToPlayBytes(buffer.limit());
     }
 
     public void pushBuffer(ByteBuffer buffer, Clock.Instant presentationOffset) {
-        queue.pushBuffer(presentationOffset, calculateBufferTime(buffer));
-        betterAudioSink.queueAudio(copy(buffer), presentationOffset);
+        tracker.pushBuffer(presentationOffset, calculateBufferTime(buffer));
+        audioSink.queueAudio(copy(buffer), presentationOffset);
+    }
+
+    @Override
+    public void pushSync(Clock.Instant realTime, Clock.Instant mediaTime) {
+        audioSink.addSync(realTime, mediaTime);
     }
 
     @Override
     public void play() {
         //sink.play();
-        betterAudioSink.play();
+        audioSink.play();
     }
 
     @Override
     public void pause() {
         //sink.stop();
-        betterAudioSink.pause();
+        audioSink.pause();
     }
 
     @Override
     public void changeMedia(MediaInfo mediaInfo) {
         this.currentMediaInfo = mediaInfo;
-        betterAudioSink.reset();
-        betterAudioSink.setMediaType(mediaInfo);
+        audioSink.reset();
+        audioSink.setMediaType(mediaInfo);
     }
 
     private void finalizeAction() {

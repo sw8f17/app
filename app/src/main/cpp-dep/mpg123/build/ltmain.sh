@@ -9816,7 +9816,7 @@ EOF
 	  func_basename "$output"
 	  output_la=$func_basename_result
 
-	  # Clear the reloadable object creation command queue and
+	  # Clear the reloadable object creation command tracker and
 	  # initialize k to one.
 	  test_cmds=
 	  concat_cmds=
@@ -9876,7 +9876,7 @@ EOF
 		  func_append objlist " $obj"
 		else
 		  # The command $test_cmds is almost too long, add a
-		  # command to the queue.
+		  # command to the tracker.
 		  if test 1 -eq "$k"; then
 		    # The first file doesn't have a previous command to add.
 		    reload_objs=$objlist

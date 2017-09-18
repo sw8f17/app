@@ -21,17 +21,17 @@ import rocks.stalin.android.app.network.OffsetSource;
 import rocks.stalin.android.app.network.OffsetSourceFactory;
 import rocks.stalin.android.app.network.WifiP2PConnectionFactory;
 import rocks.stalin.android.app.network.WifiP2PManagerFacade;
-import rocks.stalin.android.app.playback.BetterAudioSink;
-import rocks.stalin.android.app.playback.LocalBufferQueue;
+import rocks.stalin.android.app.playback.AudioSink;
+import rocks.stalin.android.app.playback.BufferTracker;
 import rocks.stalin.android.app.playback.MediaPlayerBackend;
 import rocks.stalin.android.app.playback.actions.MediaChangeAction;
 import rocks.stalin.android.app.playback.actions.PauseAction;
 import rocks.stalin.android.app.playback.actions.PlayAction;
-import rocks.stalin.android.app.proto.Music;
 import rocks.stalin.android.app.proto.NewMusic;
 import rocks.stalin.android.app.proto.PauseCommand;
 import rocks.stalin.android.app.proto.PlayCommand;
 import rocks.stalin.android.app.proto.SongChangeCommand;
+import rocks.stalin.android.app.proto.Sync;
 import rocks.stalin.android.app.proto.Welcome;
 import rocks.stalin.android.app.utils.LogHelper;
 import rocks.stalin.android.app.utils.time.Clock;
@@ -77,8 +77,8 @@ public class ClientMusicService extends Service {
         WifiP2pManager.Channel channel = rawManager.initialize(this, getMainLooper(), null);
         manager = new WifiP2PManagerFacade(rawManager, channel);
 
-        BetterAudioSink betterSink = new BetterAudioSink();
-        LocalBufferQueue queue = new LocalBufferQueue();
+        AudioSink betterSink = new AudioSink();
+        BufferTracker queue = new BufferTracker();
         backend = new MediaPlayerBackend(queue, betterSink, scheduler);
         //Debug.startMethodTracing("trce");
 
@@ -160,16 +160,15 @@ public class ClientMusicService extends Service {
                             backend.pushAction(action);
                         }
                     });
-                    connection.addHandler(Music.class, new MessageConnection.MessageListener<Music, Music.Builder>() {
+                    connection.addHandler(Sync.class, new MessageConnection.MessageListener<Sync, Sync.Builder>() {
                         @Override
-                        public void packetReceived(Music message) {
-                            Clock.Instant playTime = new Clock.Instant(message.playtime.millis, message.playtime.nanos);
+                        public void packetReceived(Sync message) {
+                            Clock.Instant realTime = new Clock.Instant(message.realtime.millis, message.realtime.nanos);
                             if(timeService != null) {
-                                Clock.Instant correctedPlayTime = playTime.sub(timeService.getOffset());
-                                LogHelper.i(TAG, "Corrected time ", playTime, " by ", timeService.getOffset(), " to ", correctedPlayTime);
-                                playTime = correctedPlayTime;
+                                realTime = realTime.sub(timeService.getOffset());
                             }
-                            backend.pushFrame(mediaInfo, playTime, message.data.asByteBuffer());
+                            Clock.Instant mediaTime = new Clock.Instant(message.mediatime.millis, message.mediatime.nanos);
+                            backend.pushSync(realTime, mediaTime);
                         }
                     });
                     connection.addHandler(NewMusic.class, new MessageConnection.MessageListener<NewMusic, NewMusic.Builder>() {
